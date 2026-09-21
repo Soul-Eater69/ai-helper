@@ -1315,3 +1315,44 @@ nav {
   white-space: nowrap;
   letter-spacing: 1px;
 }
+
+.context-notes {
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 20px;
+}
+.context-notes summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.context-notes p {
+  line-height: 1.6;
+}
+.context-notes textarea {
+  width: 100%;
+  min-height: 100px;
+  resize: vertical;
+  padding: 10px;
+  font: inherit;
+  border: 1px solid #dce3df;
+  border-radius: 8px;
+}
+.adaptive-controls {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+.adaptive-controls > span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #65766c;
+  font-size: 12px;
+}
+.workbench.conversation-only {
+  grid-template-columns: minmax(0, 1fr);
+}
+.conversation-only .answer-panel {
+  width: 100%;
+}

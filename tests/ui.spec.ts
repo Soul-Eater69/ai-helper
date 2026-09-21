@@ -18,10 +18,12 @@ test('demo code is reviewed, accepted, and undone explicitly', async ({ page }) 
   expect(errors).toEqual([]);
 });
 
-test('mode and stage selection and editable prompts work', async ({ page }) => {
+test('one workspace and editable prompts work', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('button', { name: 'Behavioral', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Learning', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Interview session' })).toBeVisible();
+  await expect(page.getByRole('navigation', { name: 'Interview modes' })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Pin code', exact: true }).click();
+  await expect(page.getByTestId('working-editor')).toBeVisible();
   await expect(
     page.getByRole('heading', { name: 'Your next good answer starts here.' }),
   ).toBeVisible();
@@ -54,4 +56,87 @@ test('desktop layout has no horizontal overflow', async ({ page }) => {
   await page.screenshot({ path: 'test-results/workspace.png', fullPage: true });
   await page.setViewportSize({ width: 1024, height: 768 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
+test('mixed follow-ups preserve context, pending revisions and accepted code', async ({ page }) => {
+  await page.addInitScript(() => {
+    const callbacks: ((event: unknown) => void)[] = [];
+    const requests: Record<string, unknown>[] = [];
+    const saves: Record<string, unknown>[] = [];
+    (window as unknown as { saves: unknown }).saves = saves;
+    (window as unknown as { requests: unknown }).requests = requests;
+    const settings = {
+      model: 'test',
+      transcriptionModel: 'test',
+      language: 'python',
+      style: '',
+      profile: '',
+      prompts: { lld: '', dsa: '', behavioral: '' },
+      autoAnswer: false,
+      saveHistory: true,
+    };
+    Object.assign(window, {
+      desktop: {
+        isDesktop: true,
+        getSettings: async () => ({ settings, hasKey: true }),
+        listSessions: async () => [],
+        saveSession: async (session: Record<string, unknown>) => {
+          saves.push(session);
+        },
+        onEvent: (callback: (event: unknown) => void) => {
+          callbacks.push(callback);
+          return () => {};
+        },
+        cancel: async () => {},
+        stopAudio: async () => {},
+        answer: async (request: Record<string, unknown>) => {
+          requests.push(request);
+          const text =
+            requests.length === 1
+              ? 'A small implementation.\n```python\nclass ParkingLot:\n    pass\n```'
+              : 'What was the technical disagreement in this project?';
+          setTimeout(
+            () => callbacks.forEach((fn) => fn({ type: 'answer.done', id: request.id, text })),
+            10,
+          );
+        },
+      },
+    });
+  });
+  await page.goto('/');
+  await page.getByText('Requirements & context', { exact: true }).click();
+  await page.getByLabel('Pinned context').fill('Single level; no payments');
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () => (window as unknown as { saves: Record<string, unknown>[] }).saves.at(-1)?.context,
+      ),
+    )
+    .toBe('Single level; no payments');
+  const question = page.locator('#question');
+  await question.fill('Implement a parking lot');
+  await page.getByRole('button', { name: 'Generate answer' }).click();
+  await expect(page.getByRole('button', { name: 'Accept changes' })).toBeEnabled();
+  await question.fill('Tell me about a disagreement on this design');
+  await page.getByRole('button', { name: 'Generate answer' }).click();
+  await expect(
+    page.getByText('What was the technical disagreement in this project?', { exact: true }),
+  ).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Accept changes' })).toBeEnabled();
+  await page.getByRole('button', { name: 'Accept changes' }).click();
+  await question.fill('Explain the complexity and how you reached agreement');
+  await page.getByRole('button', { name: 'Generate answer' }).click();
+  await expect
+    .poll(() => page.evaluate(() => (window as unknown as { requests: unknown[] }).requests.length))
+    .toBe(3);
+  const requests = await page.evaluate(
+    () => (window as unknown as { requests: Record<string, unknown>[] }).requests,
+  );
+  expect(requests[2].code).toContain('class ParkingLot');
+  expect(requests[2].context).toBe('Single level; no payments');
+  expect(requests[2]).not.toHaveProperty('mode');
+  expect(requests[2]).not.toHaveProperty('stage');
+  expect(JSON.stringify(requests[2].history)).toContain('Implement a parking lot');
+  expect(JSON.stringify(requests[2].history)).toContain('Tell me about a disagreement');
+  await expect(page.getByRole('region', { name: 'Code workspace' })).toBeVisible();
 });

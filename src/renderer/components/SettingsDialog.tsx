@@ -147,8 +147,8 @@ export default function SettingsDialog({ work, close }: { work: Workspace; close
           </p>
         </section>
         <section>
-          <h3>Mode instructions</h3>
-          <p>Built-in flows are included. Add your preferences here.</p>
+          <h3>Response guidance</h3>
+          <p>Guidance applies automatically when relevant, including mixed questions.</p>
           {(['lld', 'dsa', 'behavioral'] as const).map((mode) => (
             <div key={mode}>
               <label htmlFor={`prompt-${mode}`}>

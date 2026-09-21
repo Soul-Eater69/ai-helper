@@ -6,12 +6,13 @@ A Windows desktop workspace for technical interview practice and meetings where 
 
 ## What it does
 
+- **One continuous session:** mixed questions use shared conversation, pinned requirements and working code, with no topic or stage selection.
 - **LLD:** clarify one requirement at a time, summarize scope, derive entities, implement, and cover edge cases.
 - **DSA:** explain the approach and complexity, write readable code, and work through follow-ups.
 - **Amazon behavioral:** shape supplied experience into natural STAR + learning answers. Missing experience triggers a question, not an invented achievement.
 - **Continuous audio:** explicitly capture system playback (including Zoom) or a microphone; stream transcripts and detect questions after a pause.
 - **Reviewable code:** line numbers, syntax highlighting, inline additions/deletions, accept/reject, and undo. Editing while a proposal is generated makes that proposal stale and unapplyable.
-- **Personal prompts:** edit speaking style, real experience facts, and per-mode guidance in Settings.
+- **Personal prompts:** edit speaking style, real experience facts, and topic-specific guidance that applies automatically in Settings.
 - **Local control:** your own API key; OS-encrypted settings and optional session history. No raw audio is retained.
 
 The sample session is **canned, clearly labeled demo content**. It exercises the interface without credentials; it is not a live model answer.
@@ -46,7 +47,11 @@ Transcription uses English settings. Detection is a conservative local heuristic
 
 ### Code review
 
-Select the appropriate stage, ask a question, and review the suggested explanation. Complete code appears under **Review changes**; green marks additions and red marks removals. **Accept changes** replaces the workspace only if its version still matches the version used for generation. **Reject** leaves your code alone. **Undo revision** restores the text from before the last accepted proposal. There is no code execution feature.
+Ask a question and review the suggested explanation. The code panel opens when code is proposed and stays available once you have working code; **Pin code** also opens it at any time. Non-code follow-ups preserve pending proposals. Complete code appears under **Review changes**; green marks additions and red marks removals. **Accept changes** replaces the workspace only if its version still matches the version used for generation. **Reject** leaves your code alone. **Undo revision** restores the text from before the last accepted proposal. There is no code execution feature.
+
+### Session context
+
+Use **Requirements & context** to pin constraints throughout the session. The provider receives the opening question and recent turns within an 80,000-character history budget, plus pinned notes and current editor code. Older intermediate conversation can fall outside this budget; pin requirements that must survive a long interview. Optional encrypted history stores the notes alongside the code and answers. Existing saved sessions still open.
 
 ## Build an installer
 

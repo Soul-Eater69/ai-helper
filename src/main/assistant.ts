@@ -26,7 +26,7 @@ export const openAIProvider: StreamProvider = async function* (request, settings
       model: settings.model,
       stream: true,
       store: false,
-      instructions: buildInstructions(settings, request.mode, request.stage),
+      instructions: buildInstructions(settings),
       max_output_tokens: 6000,
       input: [
         ...request.history,
@@ -34,6 +34,7 @@ export const openAIProvider: StreamProvider = async function* (request, settings
           role: 'user',
           content: JSON.stringify({
             question: request.question,
+            pinnedContext: request.context,
             language: request.language,
             currentCode: request.code,
             experienceFacts: settings.profile,

@@ -71,13 +71,13 @@ describe('input and prompt boundaries', () => {
   });
   it('grounds behavioral answers and separates supplied facts from instructions', () => {
     const settings = settingsSchema.parse({});
-    const text = buildInstructions(settings, 'behavioral', 'story');
+    const text = buildInstructions(settings);
     expect(text).toMatch(/never invent/i);
     expect(text).toMatch(/STAR/);
     expect(text).toMatch(/simple.*English/i);
   });
   it('preserves one-at-a-time clarification and reviewable complete code in LLD', () => {
-    const text = buildInstructions(settingsSchema.parse({}), 'lld', 'scope');
+    const text = buildInstructions(settingsSchema.parse({}));
     expect(text).toMatch(/one clarifying question/i);
     expect(text).toMatch(/complete.*code/i);
   });

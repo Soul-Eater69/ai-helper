@@ -10,13 +10,12 @@ import {
 } from '../../shared/revision';
 import {
   settingsSchema,
-  stages,
   type AppEvent,
-  type Mode,
   type Settings,
   type SavedSession,
 } from '../../shared/contracts';
 import { shouldAnswer } from '../../shared/transcript';
+import { buildHistory } from '../../shared/history';
 import { SessionSaver } from '../session-saver';
 import { AudioCapture } from '../audio/capture';
 export interface Turn {
@@ -25,16 +24,13 @@ export interface Turn {
   answer: string;
   status: 'streaming' | 'done' | 'cancelled' | 'error';
 }
+export const INITIAL_CODE =
+  '# Your working code goes here.\n# AI changes appear as proposals for you to review.\n';
 export function useSession() {
   const [settings, setSettings] = useState<Settings>(settingsSchema.parse({}));
   const [hasKey, setHasKey] = useState(false);
-  const [mode, setMode] = useState<Mode>('lld');
-  const [stage, setStage] = useState('scope');
-  const [doc, setDoc] = useState(
-    createDocument(
-      '# Your working code goes here.\n# AI changes appear as proposals for you to review.\n',
-    ),
-  );
+  const [context, setContext] = useState('');
+  const [doc, setDoc] = useState(createDocument(INITIAL_CODE));
   const [proposal, setProposal] = useState<Proposal | null>(null);
   const [proposalBase, setProposalBase] = useState('');
   const [turns, setTurns] = useState<Turn[]>([]);
@@ -63,8 +59,8 @@ export function useSession() {
   const audio = useRef<AudioCapture | null>(null);
   const answerTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const pendingSpeech = useRef('');
-  const current = useRef({ settings, mode, stage, doc, turns, demo });
-  current.current = { settings, mode, stage, doc, turns, demo };
+  const current = useRef({ settings, context, doc, turns, demo });
+  current.current = { settings, context, doc, turns, demo };
   const api = () => (current.current.demo ? demoAPI : desktopAPI);
   const refreshSettings = useCallback(async () => {
     try {
@@ -89,61 +85,48 @@ export function useSession() {
       );
     await api().cancel();
   }, []);
-  const ask = useCallback(
-    async (text: string, overrides?: { demo?: boolean; stage?: string; mode?: Mode }) => {
-      if (!text.trim()) return;
-      const state = current.current;
-      const useDemo = overrides?.demo ?? state.demo;
-      if (!useDemo && !desktopAPI.isDesktop) {
-        setError('Open the Windows app for live answers, or try the sample session.');
-        return;
+  const ask = useCallback(async (text: string, overrides?: { demo?: boolean }) => {
+    if (!text.trim()) return;
+    const state = current.current;
+    const useDemo = overrides?.demo ?? state.demo;
+    if (!useDemo && !desktopAPI.isDesktop) {
+      setError('Open the Windows app for live answers, or try the sample session.');
+      return;
+    }
+    const id = crypto.randomUUID();
+    if (active.current) {
+      const old = active.current.id;
+      setTurns((items) => items.map((t) => (t.id === old ? { ...t, status: 'cancelled' } : t)));
+    }
+    active.current = { id, version: state.doc.version, code: state.doc.code };
+    setBusy(true);
+    setError('');
+    setNotice('');
+    setSelected(id);
+    setTurns((items) => [
+      ...(items.length >= 30 ? [items[0], ...items.slice(-28)] : items),
+      { id, question: text.trim(), answer: '', status: 'streaming' as const },
+    ]);
+    const history = buildHistory(state.turns);
+    try {
+      await (useDemo ? demoAPI : desktopAPI).answer({
+        id,
+        question: text,
+        context: state.context,
+        code: state.doc.code,
+        codeVersion: state.doc.version,
+        language: state.settings.language,
+        history,
+      });
+    } catch (e) {
+      if (active.current?.id === id) {
+        setBusy(false);
+        active.current = null;
+        setError(message(e));
+        setTurns((items) => items.map((t) => (t.id === id ? { ...t, status: 'error' } : t)));
       }
-      const id = crypto.randomUUID();
-      if (active.current) {
-        const old = active.current.id;
-        setTurns((items) => items.map((t) => (t.id === old ? { ...t, status: 'cancelled' } : t)));
-      }
-      active.current = { id, version: state.doc.version, code: state.doc.code };
-      setBusy(true);
-      setError('');
-      setNotice('');
-      setProposal(null);
-      setSelected(id);
-      setTurns((items) =>
-        [...items, { id, question: text.trim(), answer: '', status: 'streaming' as const }].slice(
-          -30,
-        ),
-      );
-      const history = state.turns
-        .slice(-6)
-        .flatMap((t) => [
-          { role: 'user' as const, content: t.question.slice(0, 20000) },
-          ...(t.status === 'done'
-            ? [{ role: 'assistant' as const, content: t.answer.slice(0, 20000) }]
-            : []),
-        ]);
-      try {
-        await (useDemo ? demoAPI : desktopAPI).answer({
-          id,
-          question: text,
-          mode: overrides?.mode ?? state.mode,
-          stage: overrides?.stage ?? state.stage,
-          code: state.doc.code,
-          codeVersion: state.doc.version,
-          language: state.settings.language,
-          history,
-        });
-      } catch (e) {
-        if (active.current?.id === id) {
-          setBusy(false);
-          active.current = null;
-          setError(message(e));
-          setTurns((items) => items.map((t) => (t.id === id ? { ...t, status: 'error' } : t)));
-        }
-      }
-    },
-    [],
-  );
+    }
+  }, []);
   const askRef = useRef(ask);
   askRef.current = ask;
   useEffect(() => {
@@ -161,8 +144,11 @@ export function useSession() {
               t.id === event.id ? { ...t, answer: event.text, status: 'done' } : t,
             ),
           );
-          setProposal(extractProposal(event.text, captured.version));
-          setProposalBase(captured.code);
+          const nextProposal = extractProposal(event.text, captured.version);
+          if (nextProposal) {
+            setProposal(nextProposal);
+            setProposalBase(captured.code);
+          }
           active.current = null;
           setBusy(false);
         }
@@ -221,19 +207,19 @@ export function useSession() {
     };
   }, []);
   useEffect(() => {
-    if (!settings.saveHistory || demo || !turns.length) return;
+    if (!settings.saveHistory || demo) return;
     const complete = turns.filter((t) => t.status === 'done');
-    if (!complete.length) return;
+    if (!complete.length && !context.trim() && doc.code === INITIAL_CODE) return;
     saver.current.schedule({
       id: sessionId.current,
-      title: turns[0].question.slice(0, 160),
-      mode,
+      title: (turns[0]?.question || context.trim() || 'Working code').slice(0, 160),
+      context,
       language: settings.language,
       updatedAt: new Date().toISOString(),
       code: doc.code,
       turns: complete.map(({ id, question, answer }) => ({ id, question, answer })),
     });
-  }, [turns, doc.code, settings.saveHistory, settings.language, mode, demo]);
+  }, [turns, doc.code, settings.saveHistory, settings.language, context, demo]);
   useEffect(() => {
     let closing = false;
     const flushOnClose = (event: BeforeUnloadEvent) => {
@@ -251,7 +237,7 @@ export function useSession() {
     window.addEventListener('beforeunload', flushOnClose);
     return () => window.removeEventListener('beforeunload', flushOnClose);
   }, []);
-  const reset = async (nextMode = mode) => {
+  const reset = async () => {
     try {
       await saver.current.flush();
     } catch (e) {
@@ -263,8 +249,7 @@ export function useSession() {
     clearTimeout(answerTimer.current);
     pendingSpeech.current = '';
     sessionId.current = crypto.randomUUID();
-    setMode(nextMode);
-    setStage(stages[nextMode][0].id);
+    setContext('');
     setTurns([]);
     setSelected(null);
     setProposal(null);
@@ -274,26 +259,16 @@ export function useSession() {
     setError('');
     setNotice('');
     setDemo(false);
-    setDoc(
-      createDocument(
-        '# Your working code goes here.\n# AI changes appear as proposals for you to review.\n',
-      ),
-    );
+    setDoc(createDocument(INITIAL_CODE));
     return true;
   };
   const sample = async () => {
     await stopAnswer();
     await audio.current?.stop();
     setDemo(true);
-    setStage(mode === 'behavioral' ? 'story' : 'code');
-    const text =
-      mode === 'behavioral'
-        ? 'Tell me about a time you disagreed with a teammate.'
-        : mode === 'dsa'
-          ? 'Solve Two Sum and explain the trade-offs.'
-          : 'Implement a single-level parking lot with spot allocation and release.';
+    const text = 'Implement a single-level parking lot with spot allocation and release.';
     setQuestion(text);
-    await ask(text, { demo: true, stage: mode === 'behavioral' ? 'story' : 'code' });
+    await ask(text, { demo: true });
   };
   const accept = () => {
     try {
@@ -307,9 +282,10 @@ export function useSession() {
     }
   };
   const load = async (saved: SavedSession) => {
-    if (!(await reset(saved.mode))) return;
+    if (!(await reset())) return;
     sessionId.current = saved.id;
     setDoc(createDocument(saved.code));
+    setContext(saved.context);
     setTurns(saved.turns.map((t) => ({ ...t, status: 'done' })));
     setSelected(saved.turns.at(-1)?.id ?? null);
     setSettings((s) => ({ ...s, language: saved.language }));
@@ -319,9 +295,8 @@ export function useSession() {
     setSettings,
     hasKey,
     refreshSettings,
-    mode,
-    stage,
-    setStage,
+    context,
+    setContext,
     doc,
     proposal,
     proposalBase,

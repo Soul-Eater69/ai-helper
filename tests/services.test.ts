@@ -9,8 +9,7 @@ import { settingsSchema, type AppEvent, type AnswerRequest } from '../src/shared
 const req = (id: string): AnswerRequest => ({
   id,
   question: 'Design a parking lot',
-  mode: 'lld',
-  stage: 'scope',
+  context: '',
   code: '',
   codeVersion: 0,
   language: 'python',

@@ -136,11 +136,7 @@ export default function AnswerPanel({
           value={work.question}
           maxLength={20000}
           onChange={(event) => work.setQuestion(event.target.value)}
-          placeholder={
-            work.mode === 'behavioral'
-              ? 'Tell me about a time you handled a disagreement…'
-              : 'Design a parking lot, solve a problem, or paste a follow-up…'
-          }
+          placeholder="Ask about design, algorithms, your experience, or a follow-up…"
           onKeyDown={(event) => {
             if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
               event.preventDefault();

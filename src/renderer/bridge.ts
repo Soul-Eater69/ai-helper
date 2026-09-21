@@ -18,10 +18,10 @@ export const demoAPI: DesktopAPI = {
   answer: async (request) => {
     const current = ++generation;
     let answer = example;
-    if (request.mode === 'behavioral')
+    if (/disagree|teammate|tell me about a time/i.test(request.question))
       answer =
         'For this story, I’d first pick a real disagreement where you can explain both viewpoints fairly.\n\nWhat was the specific technical decision you and your teammate disagreed about?\n\nOnce you add the facts, we can shape them into a concise STAR answer with a clear result and learning. I won’t invent a project or metric for you.';
-    if (request.mode === 'dsa')
+    if (/two sum/i.test(request.question))
       answer =
         'For Two Sum, a nested loop takes O(n²) time. We can use a dictionary to remember each number’s index and look for its complement in one pass.\n\n```python\ndef two_sum(nums, target):\n    seen = {}\n    for index, number in enumerate(nums):\n        complement = target - number\n        if complement in seen:\n            return [seen[complement], index]\n        seen[number] = index\n    return []\n```\n\nChecking before storing prevents using the same element twice. This takes O(n) time and O(n) extra space.';
     void (async () => {

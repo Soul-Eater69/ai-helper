@@ -3,26 +3,6 @@ import { z } from 'zod';
 export const modeSchema = z.enum(['lld', 'dsa', 'behavioral']);
 export type Mode = z.infer<typeof modeSchema>;
 export const languages = ['python', 'java', 'typescript', 'cpp'] as const;
-export const stages: Record<Mode, { id: string; label: string }[]> = {
-  lld: [
-    { id: 'scope', label: 'Clarify' },
-    { id: 'requirements', label: 'Requirements' },
-    { id: 'entities', label: 'Design' },
-    { id: 'code', label: 'Implement' },
-    { id: 'tests', label: 'Edge cases' },
-  ],
-  dsa: [
-    { id: 'scope', label: 'Clarify' },
-    { id: 'approach', label: 'Approach' },
-    { id: 'code', label: 'Code' },
-    { id: 'tests', label: 'Test & explain' },
-  ],
-  behavioral: [
-    { id: 'story', label: 'Story' },
-    { id: 'followup', label: 'Follow-up' },
-    { id: 'reflection', label: 'Learning' },
-  ],
-};
 export const settingsSchema = z
   .object({
     model: z
@@ -63,23 +43,26 @@ export const answerRequestSchema = z
   .object({
     id: z.string().min(1).max(100),
     question: z.string().trim().min(1).max(20000),
-    mode: modeSchema,
-    stage: z.string().max(30),
+    context: z.string().max(12000).default(''),
     code: z.string().max(100000),
     codeVersion: z.number().int().nonnegative(),
     language: z.enum(languages),
     history: z
       .array(z.object({ role: z.enum(['user', 'assistant']), content: z.string().max(20000) }))
-      .max(12),
+      .max(60)
+      .refine(
+        (items) => items.reduce((n, item) => n + item.content.length, 0) <= 80000,
+        'History exceeds context budget',
+      ),
   })
-  .strict()
-  .refine((r) => stages[r.mode].some((s) => s.id === r.stage), 'Invalid stage for this mode');
+  .strict();
 export type AnswerRequest = z.infer<typeof answerRequestSchema>;
 export const savedSessionSchema = z.object({
   id: z.string().min(1).max(100),
   title: z.string().max(160),
   updatedAt: z.string().datetime(),
-  mode: modeSchema,
+  mode: modeSchema.optional(), // Legacy vault compatibility; never used for routing.
+  context: z.string().max(12000).default(''),
   code: z.string().max(100000),
   language: z.enum(languages),
   turns: z

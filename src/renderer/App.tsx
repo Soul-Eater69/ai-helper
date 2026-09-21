@@ -7,8 +7,6 @@ import {
   ChevronRight,
   CircleHelp,
   Code2,
-  Layers3,
-  MessageSquare,
   Mic,
   Pause,
   Plus,
@@ -19,38 +17,18 @@ import {
   Trash2,
   X,
 } from 'lucide-react';
-import { useSession } from './hooks/useSession';
+import { useSession, INITIAL_CODE } from './hooks/useSession';
 import { desktopAPI } from './bridge';
-import { stages, type Mode } from '../shared/contracts';
 import CodeWorkspace from './components/CodeWorkspace';
 import AnswerPanel from './components/AnswerPanel';
 import SettingsDialog from './components/SettingsDialog';
-const modeInfo = {
-  lld: {
-    title: 'Low-level design',
-    short: 'LLD',
-    description: 'From requirements to a thoughtful implementation',
-    icon: Layers3,
-  },
-  dsa: {
-    title: 'Data structures & algorithms',
-    short: 'DSA',
-    description: 'Reason through the problem, then make it work',
-    icon: Code2,
-  },
-  behavioral: {
-    title: 'Amazon behavioral',
-    short: 'Behavioral',
-    description: 'Your real experience, told clearly',
-    icon: MessageSquare,
-  },
-};
 export default function App() {
   const work = useSession();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [source, setSource] = useState<'system' | 'microphone'>('system');
   const [historyOpen, setHistoryOpen] = useState(false);
-  const ModeIcon = modeInfo[work.mode].icon;
+  const [codePinned, setCodePinned] = useState(false);
+  const showCode = codePinned || !!work.proposal || work.doc.code !== INITIAL_CODE;
   const listening = ['ready', 'connecting', 'reconnecting'].includes(work.audioStatus);
   return (
     <div className="app-shell">
@@ -66,25 +44,17 @@ export default function App() {
         <button className="new-session" onClick={() => void work.reset()}>
           <Plus size={17} /> New session <span>↗</span>
         </button>
-        <div className="nav-label">WORK THROUGH</div>
-        <nav aria-label="Interview modes">
-          {(Object.keys(modeInfo) as Mode[]).map((mode) => {
-            const Icon = modeInfo[mode].icon;
-            return (
-              <button
-                className={`mode-button ${work.mode === mode ? 'active' : ''}`}
-                key={mode}
-                onClick={() => {
-                  if (mode !== work.mode) void work.reset(mode);
-                }}
-              >
-                <Icon size={18} />
-                <span>{modeInfo[mode].short}</span>
-                {work.mode === mode && <ChevronRight size={15} />}
-              </button>
-            );
-          })}
-        </nav>
+        <details className="context-notes">
+          <summary>Requirements &amp; context</summary>
+          <p>Pin constraints to keep them available throughout this session.</p>
+          <textarea
+            aria-label="Pinned context"
+            placeholder="Single level, two exits, no payments…"
+            maxLength={12000}
+            value={work.context}
+            onChange={(event) => work.setContext(event.target.value)}
+          />
+        </details>
         <div className="sidebar-divider" />
         <div className="nav-label transcript-label">
           LIVE TRANSCRIPT <span className={listening ? 'green-dot' : 'neutral-dot'} />
@@ -172,7 +142,7 @@ export default function App() {
         <header className="topbar">
           <div className="breadcrumb">
             Workspace <ChevronRight size={13} />
-            <span>{modeInfo[work.mode].title}</span>
+            <span>Interview session</span>
           </div>
           <div className="topbar-right">
             <span className="connection-pill">
@@ -191,11 +161,11 @@ export default function App() {
         <div className="workspace-heading">
           <div className="workspace-title">
             <span className="mode-icon">
-              <ModeIcon size={24} />
+              <BrainCircuit size={24} />
             </span>
             <div>
-              <h2>{modeInfo[work.mode].title}</h2>
-              <p>{modeInfo[work.mode].description}</p>
+              <h2>Interview session</h2>
+              <p>Design, code and experience — one continuous conversation</p>
             </div>
           </div>
           <span className="session-badge">
@@ -203,18 +173,18 @@ export default function App() {
           </span>
         </div>
         <div className="session-controls">
-          <div className="stage-tabs" aria-label="Interview stage">
-            {stages[work.mode].map((stage, index) => (
-              <button
-                aria-label={stage.label}
-                className={work.stage === stage.id ? 'active' : ''}
-                onClick={() => work.setStage(stage.id)}
-                key={stage.id}
-              >
-                <span>{index + 1}</span>
-                {stage.label}
-              </button>
-            ))}
+          <div className="adaptive-controls">
+            <span>
+              <Sparkles size={14} /> Follows your conversation
+            </span>
+            <button
+              className="subtle"
+              aria-pressed={codePinned}
+              onClick={() => setCodePinned(!codePinned)}
+            >
+              <Code2 size={15} />
+              {codePinned ? 'Unpin code' : 'Pin code'}
+            </button>
           </div>
           <div className="audio-controls">
             <select
@@ -268,43 +238,9 @@ export default function App() {
             </button>
           </div>
         )}
-        <div className={`workbench ${work.mode === 'behavioral' ? 'behavioral' : ''}`}>
+        <div className={`workbench ${showCode ? '' : 'conversation-only'}`}>
           <AnswerPanel work={work} openSettings={() => setSettingsOpen(true)} />
-          {work.mode !== 'behavioral' ? (
-            <CodeWorkspace work={work} />
-          ) : (
-            <aside className="story-guide">
-              <div className="eyebrow">A STORY THAT HOLDS UP</div>
-              <h2>Specific beats perfect.</h2>
-              <p>
-                Start with something that actually happened. Make your decisions and their effects
-                easy to follow.
-              </p>
-              {[
-                { n: 'S', title: 'Situation', text: 'What was happening, and why did it matter?' },
-                { n: 'T', title: 'Task', text: 'What were you personally responsible for?' },
-                { n: 'A', title: 'Action', text: 'What did you do, and why that approach?' },
-                { n: 'R', title: 'Result', text: 'What changed? Use only verified outcomes.' },
-              ].map((item) => (
-                <div className="story-step" key={item.n}>
-                  <span>{item.n}</span>
-                  <div>
-                    <h3>{item.title}</h3>
-                    <p>{item.text}</p>
-                  </div>
-                </div>
-              ))}
-              <div className="learning-note">
-                <Sparkles size={18} />
-                <p>
-                  <strong>Then, the learning.</strong>What would you repeat or do differently?
-                </p>
-              </div>
-              <button className="subtle" onClick={() => setSettingsOpen(true)}>
-                Add your experience <ChevronRight size={15} />
-              </button>
-            </aside>
-          )}
+          {showCode && <CodeWorkspace work={work} />}
         </div>
         <footer className="statusbar">
           <span>
