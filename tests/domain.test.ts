@@ -112,3 +112,38 @@ describe('choosing which fence is the proposal', () => {
     expect(splitAnswer('```python\n\n```', 0).proposal).toBeNull();
   });
 });
+
+describe('a dry-run trace is never mistaken for code', () => {
+  const trace = [
+    'Let me trace [2,7,11,15] with target 9.',
+    '',
+    '```text',
+    'i=0 j=1   2+7  = 9   -> hit',
+    'i=0 j=2   2+11 = 13  -> no',
+    '```',
+    '',
+    'Notice I keep re-scanning values I have already seen.',
+  ].join('\n');
+
+  it('leaves the editor alone when the answer is only a trace', () => {
+    // Without this the trace table would replace the working file.
+    const { proposal, spoken } = splitAnswer(trace, 3);
+    expect(proposal).toBeNull();
+    expect(spoken).toBe(trace);
+    expect(spoken).toContain('i=0 j=1');
+  });
+
+  it('proposes the real code when a trace and code appear together', () => {
+    const answer = `${trace}\n\n\`\`\`python\ndef two_sum(nums, t):\n    return []\n\`\`\``;
+    const { proposal, spoken } = splitAnswer(answer, 3);
+    expect(proposal?.code).toContain('def two_sum');
+    // The trace stays on screen; only the code leaves for the editor.
+    expect(spoken).toContain('i=0 j=1');
+    expect(spoken).not.toContain('def two_sum');
+  });
+
+  it('ignores the other read-only fence tags too', () => {
+    for (const tag of ['plaintext', 'output', 'console', 'table', 'diff'])
+      expect(splitAnswer(`\`\`\`${tag}\nsome rows\n\`\`\``, 0).proposal).toBeNull();
+  });
+});

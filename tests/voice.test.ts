@@ -124,3 +124,68 @@ describe('the instructions ask for spoken delivery', () => {
     expect(styled).toContain('Blunt and very brief.');
   });
 });
+
+describe('the DSA flow the instructions ask for', () => {
+  const text = buildInstructions(settingsSchema.parse({}));
+
+  it('puts the dry run before any code', () => {
+    const dryRun = text.indexOf('DRY RUN:');
+    const code = text.indexOf('CODE: write the optimal');
+    expect(dryRun).toBeGreaterThan(0);
+    expect(dryRun).toBeLessThan(code);
+  });
+
+  it('asks the dry run for something to write and something to say', () => {
+    expect(text).toMatch(/what to write on the shared screen/i);
+    expect(text).toMatch(/what to say while writing it/i);
+    expect(text).toMatch(/fenced block tagged text/i);
+    expect(text).toMatch(/naming the waste/i);
+  });
+
+  it('codes the optimal only, with a stated escape hatch', () => {
+    expect(text).toMatch(/write the optimal solution only/i);
+    expect(text).toMatch(/do not write the brute force as well/i);
+    expect(text).toMatch(/rather than stalling with an empty editor/i);
+  });
+
+  it('tells the model a trace fence is not a proposal, matching splitAnswer', () => {
+    expect(text).toMatch(/trace, sample output or a table is not code/i);
+    expect(text).toMatch(/tag those fences text/i);
+  });
+
+  it('keeps the order adaptive rather than scripted', () => {
+    expect(text).toMatch(/this is a default, not a script/i);
+    expect(text).toMatch(/never re-run a step they have moved past/i);
+  });
+});
+
+describe('narration while coding, and staying open to follow-ups', () => {
+  const text = buildInstructions(settingsSchema.parse({}));
+
+  it('asks for beats in writing order, not a summary afterwards', () => {
+    expect(text).toMatch(/in the order it gets written/i);
+    expect(text).toMatch(/said out loud while that part is being typed/i);
+    expect(text).toMatch(/do not summarise the finished code afterwards/i);
+    // CODE must not tell it to stop talking when VERIFY immediately says not to.
+    expect(text).not.toMatch(/Then stop\. Do not keep talking after the code/i);
+  });
+
+  it('asks for decisions rather than syntax', () => {
+    expect(text).toMatch(/explain the decisions, not the syntax/i);
+  });
+
+  it('expects interruptions mid-step and resumes rather than restarting', () => {
+    expect(text).toMatch(/expect them at any point/i);
+    expect(text).toMatch(/carry on from where you stopped/i);
+    expect(text).toMatch(/leave the floor to the interviewer/i);
+  });
+
+  it('demonstrates the shape instead of only describing it', () => {
+    // A worked example is what makes the pacing reproducible turn to turn.
+    expect(text).toMatch(/this is the shape of one exchange/i);
+    expect(text).toMatch(/not a script to copy/i);
+    expect(text).toMatch(/Then stop and wait/);
+    // The example must show the trace fence tagged text, or it teaches the wrong thing.
+    expect(text).toMatch(/fenced block tagged text holding a short trace/i);
+  });
+});

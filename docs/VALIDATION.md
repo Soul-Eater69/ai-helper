@@ -174,3 +174,37 @@ gated on that, since the bonus alone could drag a story into a technical answer.
 Nine technical phrasings and seven behavioural ones are pinned by tests.
 
 92 unit tests, 6 browser tests, strict type check, production build and Prettier pass.
+
+## DSA flow rewritten around the dry run
+
+The dry run moves before the code. It is the step that makes the optimal sound derived
+rather than recalled: walking a small example through the brute force is where the
+repeated work becomes visible, and the optimal is then built out of that observation.
+
+It produces two things deliberately: a compact trace in a fenced `text` block, which is
+what goes on the shared screen, and a spoken narration, which is what is said while
+writing it.
+
+`splitAnswer` had to change for that to be safe. A trace-only answer previously became
+the workspace proposal and replaced the working file, because the untagged fallback took
+the last fence whatever it held. Fences tagged `text`, `trace`, `output`, `console`,
+`table`, `diff` and similar are now never proposals, and the rendering rules tell the
+model the same thing so the persona and the parser agree.
+
+Coding is narrated in writing order rather than summarised afterwards: short beats, one
+per meaningful part, each sayable while that part is typed, explaining decisions rather
+than syntax. Follow-ups are expected mid-step, and being cut off resumes rather than
+restarting the walkthrough.
+
+A worked example of one exchange is included. Models reproduce a demonstrated shape far
+more reliably than an abstract description, and pacing is the thing most at risk here.
+
+The assembled instruction is now about 5,400 tokens, up from 4,500. It is byte-identical
+across turns and sits in `instructions`, so it should continue to hit the automatic
+prefix cache.
+
+104 unit tests, 6 browser tests, strict type check, production build and Prettier pass.
+
+Not verified here: whether the model actually follows this pacing. That needs a live key
+and a listener. Tests prove the instruction says these things, not that the output obeys
+them.

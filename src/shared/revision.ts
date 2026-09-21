@@ -57,6 +57,26 @@ const CODE_LANGUAGES = new Set([
   'sql',
 ]);
 
+/**
+ * Fence tags that are explicitly not source: a dry-run trace, sample output, a table.
+ * These must never reach the editor, even when the answer contains no real code -- the
+ * untagged fallback below would otherwise replace the working file with a trace table.
+ */
+const NOT_CODE = new Set([
+  'text',
+  'plain',
+  'plaintext',
+  'txt',
+  'trace',
+  'table',
+  'output',
+  'console',
+  'log',
+  'diff',
+  'markdown',
+  'md',
+]);
+
 const CODE_BLOCK = /^```([a-z+#]*)[^\n]*\n([\s\S]*?)^```[ \t]*$/gm;
 
 /** Every fenced block in an answer, in the order the model wrote them. */
@@ -85,7 +105,10 @@ export function splitAnswer(
   answer: string,
   baseVersion: number,
 ): { spoken: string; proposal: Proposal | null } {
-  const blocks = codeBlocks(answer).filter((block) => block.code.trim());
+  const blocks = codeBlocks(answer)
+    .filter((block) => block.code.trim())
+    // A fence tagged `text` or `trace` is something to read, never something to run.
+    .filter((block) => !NOT_CODE.has(block.language));
   // A bare ``` fence is usually sample output or a console transcript, not the file.
   // Prefer the last block that names a programming language; only fall back to an
   // untagged block when the answer contains no tagged block at all.
