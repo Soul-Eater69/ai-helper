@@ -18,15 +18,35 @@ export type SpeechProvider = (
   key: string,
   signal: AbortSignal,
 ) => Promise<SpeechDecision>;
-export const openAISpeechProvider: SpeechProvider = async (request, settings, key, signal) => {
+/** True when the provider rejected the model itself, rather than the request. */
+function isModelRejected(error: unknown): boolean {
+  const status = (error as { status?: number })?.status;
+  if (status !== 404 && status !== 400) return false;
+  const code = (error as { code?: string })?.code ?? '';
+  const message = (error as { message?: string })?.message ?? '';
+  return /model_not_found|does not exist|not found|unsupported model/i.test(`${code} ${message}`);
+}
+
+export function routerModel(settings: Settings): string {
+  return settings.routerModel.trim() || settings.model;
+}
+
+async function requestDecision(
+  model: string,
+  request: SpeechRequest,
+  key: string,
+  signal: AbortSignal,
+): Promise<SpeechDecision> {
   const client = new OpenAI({ apiKey: key, maxRetries: 0, timeout: 20000 });
   const response = await client.responses.create(
     {
-      model: settings.model,
+      model,
       store: false,
       instructions: SPEECH_INSTRUCTIONS,
       input: JSON.stringify(request),
-      max_output_tokens: 1000,
+      // One enum value under a strict schema. The previous 1000 also let a reasoning
+      // model spend the whole budget thinking before emitting a single word.
+      max_output_tokens: 16,
       text: {
         format: {
           type: 'json_schema',
@@ -45,6 +65,18 @@ export const openAISpeechProvider: SpeechProvider = async (request, settings, ke
   );
   if (response.status !== 'completed') throw new Error('Incomplete speech decision');
   return speechDecisionSchema.parse(JSON.parse(response.output_text));
+}
+
+export const openAISpeechProvider: SpeechProvider = async (request, settings, key, signal) => {
+  const preferred = routerModel(settings);
+  try {
+    return await requestDecision(preferred, request, key, signal);
+  } catch (error) {
+    // A routing model the account cannot use must not take listening down with it.
+    // Fall back to the answer model, which is already known to work.
+    if (preferred === settings.model || signal.aborted || !isModelRejected(error)) throw error;
+    return requestDecision(settings.model, request, key, signal);
+  }
 };
 export class SpeechService {
   private active?: AbortController;

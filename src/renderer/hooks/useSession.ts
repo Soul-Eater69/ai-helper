@@ -15,7 +15,7 @@ import {
   type SavedSession,
 } from '../../shared/contracts';
 import { SpeechQueue } from '../speech-queue';
-import { buildHistory } from '../../shared/history';
+import { buildHistory, buildRouterHistory } from '../../shared/history';
 import { buildResumePrompt, classifyInterruption } from '../../shared/turn-taking';
 import { selectStories } from '../../shared/story-bank';
 import { SessionSaver } from '../session-saver';
@@ -221,8 +221,8 @@ export function useSession() {
           text,
           recentSpeech,
           context: state.context,
-          history: buildHistory(state.turns),
-          currentResponse: state.turns.at(-1)?.answer.slice(-6000) ?? '',
+          history: buildRouterHistory(state.turns),
+          currentResponse: state.turns.at(-1)?.answer.slice(-1200) ?? '',
         });
       },
       (text, recentSpeech) => {

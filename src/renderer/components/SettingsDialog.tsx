@@ -114,6 +114,15 @@ export default function SettingsDialog({ work, close }: { work: Workspace; close
               />
             </div>
             <div>
+              <label htmlFor="router-model">Routing model</label>
+              <input
+                id="router-model"
+                value={draft.routerModel}
+                placeholder="Blank uses the answer model"
+                onChange={(e) => setDraft({ ...draft, routerModel: e.target.value })}
+              />
+            </div>
+            <div>
               <label htmlFor="transcription-model">Transcription model</label>
               <input
                 id="transcription-model"
@@ -123,8 +132,10 @@ export default function SettingsDialog({ work, close }: { work: Workspace; close
             </div>
           </div>
           <p className="field-help">
-            Use model IDs available to your API account. Changes to transcription apply the next
-            time you start listening.
+            The routing model only decides whether speech deserves an answer, so a small fast model
+            is enough. If your account cannot use it, the answer model is used instead. Use model
+            IDs available to your API account. Changes to transcription apply the next time you
+            start listening.
           </p>
         </section>
         <section>

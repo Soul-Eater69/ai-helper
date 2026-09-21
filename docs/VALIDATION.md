@@ -127,3 +127,34 @@ that stub settings directly; fixed in the hook rather than in the tests.
 
 Not verified here: whether selection picks the story a human would have picked. That
 needs real stories and a real interview.
+
+## Routing cost and latency
+
+The speech router ran on the answer model and received the full conversation history on
+every speech pause, to return one of three words. Measured mid-interview at 12 answered
+turns, one routing call carried about 15,075 input tokens; a 20-question interview with
+roughly three pauses each is about 900,000 tokens spent on routing, against roughly
+260,000 on the answers themselves.
+
+Three changes:
+
+- A dedicated `routerModel`, defaulting to a small model. If the account cannot use it,
+  the provider retries once on the answer model rather than letting listening fail. Only
+  a model rejection triggers that retry, so a rate limit does not silently spend a second
+  call on the expensive model.
+- The routing payload is the last exchange, not the interview. The tail of the last
+  answer is kept because a clarifying question sits at the end of it.
+- `max_output_tokens` 1000 to 16. It returns one enum value, and the old budget let a
+  reasoning model spend the whole allowance before emitting it.
+
+Measured result: about 1,075 input tokens per routing call, a 93% reduction, and on a
+small model rather than the frontier one.
+
+`speechRequestSchema` now caps the routing payload well below the answer payload, so the
+history cannot silently regrow into it. A test asserts routing stays under an eighth of
+the answer payload.
+
+88 unit tests, 6 browser tests, strict type check, production build and Prettier pass.
+
+Not verified here: the actual latency saved. That needs a live key; the token measurement
+above is arithmetic on real payload sizes, not a timing measurement.

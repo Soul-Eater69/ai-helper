@@ -60,6 +60,17 @@ export const settingsSchema = z
       .max(100)
       .regex(/^[a-zA-Z0-9_.:-]+$/)
       .default('gpt-5.4'),
+    /**
+     * Model for the answer/wait/ignore routing call. It runs on every speech pause and
+     * returns one enum value, so it does not need the answer model. Blank falls back to
+     * the answer model, which is also what happens if this one is rejected.
+     */
+    routerModel: z
+      .string()
+      .trim()
+      .max(100)
+      .regex(/^[a-zA-Z0-9_.:-]*$/)
+      .default('gpt-4o-mini'),
     transcriptionModel: z
       .string()
       .trim()
@@ -111,12 +122,23 @@ export const answerRequestSchema = z
   })
   .strict();
 export type AnswerRequest = z.infer<typeof answerRequestSchema>;
+/**
+ * The routing payload, capped far below the answer payload on purpose.
+ *
+ * The router only has to tell a question from someone thinking aloud, and whether a
+ * short reply answers a clarification it just asked. That needs the last exchange, not
+ * the interview: the full history is up to 80,000 characters and was being sent on every
+ * pause. These caps are the guard against it silently regrowing.
+ */
 export const speechRequestSchema = answerRequestSchema
-  .pick({ context: true, history: true })
+  .pick({ context: true })
   .extend({
-    text: z.string().trim().min(1).max(20000),
-    recentSpeech: z.array(z.string().max(1600)).max(12),
-    currentResponse: z.string().max(6000),
+    text: z.string().trim().min(1).max(4000),
+    recentSpeech: z.array(z.string().max(600)).max(6),
+    currentResponse: z.string().max(1200),
+    history: z
+      .array(z.object({ role: z.enum(['user', 'assistant']), content: z.string().max(1200) }))
+      .max(4),
   })
   .strict();
 export type SpeechRequest = z.infer<typeof speechRequestSchema>;
