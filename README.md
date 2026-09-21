@@ -55,25 +55,25 @@ Press **Start listening** once. The session stays live for the whole interview: 
 one transcription socket open across every question, reconnects silently on a drop, and
 never needs another click. Pausing is explicit.
 
-Speech is assembled into whole utterances before anything is asked. Server VAD closes a
-segment on every short pause, so one spoken sentence arrives in pieces; those pieces are
-joined until the speaker actually stops (1.8s of silence) or the text already reads as a
-finished question. A thinking pause mid-sentence no longer starts a second answer.
+The speech router decides whether what it heard deserves a response — a complete
+question, a correction, or a short reply to a clarification all count, while filler,
+background talk and someone thinking out loud do not. It also waits when a question is
+still being formed, so a pause mid-sentence does not start a second answer.
 
-Speech arriving _while_ an answer is streaming is routed by what it is:
+Speech the router has approved is then routed again by what it means for an answer that
+is still streaming:
 
 | What was said                     | What happens                                                                              |
 | --------------------------------- | ----------------------------------------------------------------------------------------- |
-| "mm-hmm", "right", "go on"        | Ignored. The answer keeps streaming.                                                      |
 | "what's the complexity of that?"  | Answered as a short aside, then the interrupted answer **resumes from where it stopped**. |
 | "actually, return all pairs"      | The premise changed, so the answer is rewritten in place — same entry, new requirement.   |
 | "okay, now design a rate limiter" | A new entry. The interrupted one is kept and marked.                                      |
 
 Resuming re-sends what was already written and asks the model to continue from exactly
-there, so nothing is repeated. A correction never resumes, because continuing an answer
-whose premise was just withdrawn would be wrong.
+there, so nothing is repeated. A correction never resumes: continuing an answer whose
+premise was just withdrawn would keep writing something already rejected.
 
-Turn detection is a local heuristic, not semantic understanding. Turn off automatic
+Routing is a heuristic over the transcript, not full understanding. Turn off automatic
 answers in Settings to review every transcript in the question box before sending.
 
 ### Code review
