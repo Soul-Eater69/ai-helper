@@ -44,14 +44,18 @@ export default function AnswerPanel({
               <span className="assistant-avatar">
                 <Sparkles size={13} />
               </span>
-              <strong>Suggested response</strong>
+              <strong>{turn.detour ? 'Quick aside' : 'Suggested response'}</strong>
               <span className={`response-status ${turn.status}`}>
                 {turn.status === 'streaming'
-                  ? 'Writing…'
+                  ? turn.answer
+                    ? 'Picking up where it stopped…'
+                    : 'Writing…'
                   : turn.status === 'done'
                     ? 'Ready'
                     : turn.status === 'cancelled'
-                      ? 'Interrupted'
+                      ? turn.interrupted
+                        ? 'Interrupted — they moved on'
+                        : 'Interrupted'
                       : 'Incomplete'}
               </span>
             </div>

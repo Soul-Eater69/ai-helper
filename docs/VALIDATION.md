@@ -24,3 +24,18 @@ These are release acceptance items in TESTING.md. This is tested initial-release
 ## Transcription startup correction
 
 Changed the new-install default to `gpt-4o-mini-transcribe` for the existing server-VAD flow. Existing saved settings are retained and must be changed explicitly. Mock WebSocket tests cover configuration rejection, HTTP authentication rejection, network errors and acknowledgement before readiness. Provider diagnostics expose error codes and parameter names, not raw error messages. These tests do not establish live API connectivity or model access for a user account.
+
+## Continuous turn-taking — added after initial release
+
+- Utterance assembly and interruption routing added as pure, clock-injected logic in
+  `src/shared/turn-taking.ts`; 13 tests cover fragmented speech, the four interruption
+  classes, and the resume prompt.
+- Full suite after the change: 41 unit tests, 5 browser workflow tests, strict type check,
+  production build and Prettier all pass.
+- The reconnect budget now resets on a confirmed session, so intermittent drops across a
+  long sitting no longer exhaust it cumulatively.
+
+Not verified here: how the classifier behaves on real accented speech, real interruption
+timing, and whether resumed answers read seamlessly from a live model. Those remain live
+acceptance items — items 3, 5 and 9 in TESTING.md now also cover backchannel, detour and
+correction handling.

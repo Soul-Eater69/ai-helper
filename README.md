@@ -49,6 +49,33 @@ Transcription uses English settings. Detection is a conservative local heuristic
 
 If you saved settings with the earlier `gpt-live-transcribe` default, change **Settings → Transcription model** to `gpt-4o-mini-transcribe`, save, and restart listening. Saved model choices are not overwritten by updates. This app uses server voice activity detection to commit speech turns; the live model configuration can reject that setting. Startup errors now distinguish authentication, HTTP access/rate limits, configuration rejection and network failure. Provider error codes and parameter names are shown without raw provider messages or credentials.
 
+### Listening continuously, and being interrupted
+
+Press **Start listening** once. The session stays live for the whole interview: it keeps
+one transcription socket open across every question, reconnects silently on a drop, and
+never needs another click. Pausing is explicit.
+
+Speech is assembled into whole utterances before anything is asked. Server VAD closes a
+segment on every short pause, so one spoken sentence arrives in pieces; those pieces are
+joined until the speaker actually stops (1.8s of silence) or the text already reads as a
+finished question. A thinking pause mid-sentence no longer starts a second answer.
+
+Speech arriving _while_ an answer is streaming is routed by what it is:
+
+| What was said                     | What happens                                                                              |
+| --------------------------------- | ----------------------------------------------------------------------------------------- |
+| "mm-hmm", "right", "go on"        | Ignored. The answer keeps streaming.                                                      |
+| "what's the complexity of that?"  | Answered as a short aside, then the interrupted answer **resumes from where it stopped**. |
+| "actually, return all pairs"      | The premise changed, so the answer is rewritten in place — same entry, new requirement.   |
+| "okay, now design a rate limiter" | A new entry. The interrupted one is kept and marked.                                      |
+
+Resuming re-sends what was already written and asks the model to continue from exactly
+there, so nothing is repeated. A correction never resumes, because continuing an answer
+whose premise was just withdrawn would be wrong.
+
+Turn detection is a local heuristic, not semantic understanding. Turn off automatic
+answers in Settings to review every transcript in the question box before sending.
+
 ### Code review
 
 Ask a question and review the suggested explanation. The code panel opens when code is proposed and stays available once you have working code; **Pin code** also opens it at any time. Non-code follow-ups preserve pending proposals. Complete code appears under **Review changes**; green marks additions and red marks removals. **Accept changes** replaces the workspace only if its version still matches the version used for generation. **Reject** leaves your code alone. **Undo revision** restores the text from before the last accepted proposal. There is no code execution feature.
