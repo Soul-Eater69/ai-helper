@@ -7,7 +7,7 @@ export class SpeechQueue {
   private epoch = 0;
   private timer?: ReturnType<typeof setTimeout>;
   constructor(
-    private route: (text: string, recent: string[]) => Promise<SpeechDecision>,
+    private route: (text: string, recent: string[], finalize?: boolean) => Promise<SpeechDecision>,
     private answer: (text: string, recent: string[]) => void,
     private status: (text: string) => void,
     private error: (error: unknown) => void,
@@ -36,20 +36,23 @@ export class SpeechQueue {
     if (clearContext) this.recent = [];
     this.status('');
   }
-  private async decide(epoch: number): Promise<void> {
+  private async decide(epoch: number, finalize = false): Promise<void> {
     const text = this.pending;
     this.status('Understanding');
     try {
-      const decision = await this.route(text, [...this.recent]);
+      const decision = finalize
+        ? await this.route(text, [...this.recent], true)
+        : await this.route(text, [...this.recent]);
       if (epoch !== this.epoch) return;
-      if (decision.action === 'wait') {
-        this.status('Waiting for more');
+      if (decision.action === 'wait' && !finalize) {
+        this.status('Brief pause — checking for more');
+        this.timer = setTimeout(() => void this.decide(epoch, true), 1500);
         return;
       }
       this.pending = '';
       const context = [...this.recent];
       this.recent = [...this.recent, text.slice(-1600)].slice(-12);
-      if (decision.action === 'answer') {
+      if (decision.action === 'answer' || decision.action === 'wait') {
         this.status('Answering');
         this.answer(text, context);
       } else this.status('Listening');

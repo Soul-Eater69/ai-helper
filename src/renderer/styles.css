@@ -1071,3 +1071,45 @@ svg {
     animation: none !important;
   }
 }
+
+.diff-surface {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+}
+.diff-navigation {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  background: #fff;
+  font-size: 12px;
+  min-height: 40px;
+}
+.diff-navigation > span:first-child {
+  margin-right: auto;
+}
+.diff-navigation button {
+  padding: 4px 8px;
+}
+.diff-counts {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  color: var(--muted);
+  font-size: 11px;
+}
+.insert-count {
+  color: #247345;
+}
+.delete-count {
+  color: #a93535;
+}
+.diff-editor-host {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+}

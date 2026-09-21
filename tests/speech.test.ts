@@ -179,3 +179,40 @@ it('releases a skipped noise utterance so later questions can be answered', asyn
   await vi.advanceTimersByTimeAsync(1100);
   expect(answer).toHaveBeenCalledWith('Explain the design', []);
 });
+it('rechecks a wait after silence and answers without requiring more audio', async () => {
+  vi.useFakeTimers();
+  const answer = vi.fn();
+  const route = vi
+    .fn()
+    .mockResolvedValueOnce({ action: 'wait' })
+    .mockResolvedValueOnce({ action: 'answer' });
+  const queue = new SpeechQueue(
+    route,
+    answer,
+    () => {},
+    () => {},
+  );
+  queue.final('Can you describe the solution');
+  await vi.advanceTimersByTimeAsync(1100);
+  expect(answer).not.toHaveBeenCalled();
+  await vi.advanceTimersByTimeAsync(1500);
+  expect(route).toHaveBeenLastCalledWith('Can you describe the solution', [], true);
+  expect(answer).toHaveBeenCalledWith('Can you describe the solution', []);
+});
+it('new speech cancels the scheduled final decision after a wait', async () => {
+  vi.useFakeTimers();
+  const answer = vi.fn();
+  const route = vi.fn().mockResolvedValue({ action: 'wait' });
+  const queue = new SpeechQueue(
+    route,
+    answer,
+    () => {},
+    () => {},
+  );
+  queue.final('Given a list');
+  await vi.advanceTimersByTimeAsync(1100);
+  queue.started('continued');
+  await vi.advanceTimersByTimeAsync(3000);
+  expect(route).toHaveBeenCalledTimes(1);
+  expect(answer).not.toHaveBeenCalled();
+});

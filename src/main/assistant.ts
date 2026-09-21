@@ -38,6 +38,7 @@ export const openAIProvider: StreamProvider = async function* (request, settings
             recentSpokenContext: request.speechContext ?? [],
             language: request.language,
             currentCode: request.code,
+            codeSource: request.codeSource ?? 'working',
             experienceFacts: settings.profile,
           }),
         },

@@ -3,8 +3,8 @@
 ## Verified in the implementation environment
 
 - TypeScript strict type check passed.
-- 37 domain/service/lifecycle/context/transcription/speech tests passed.
-- Six browser workflow tests passed: visible insertion/deletion diffs and accept/undo, unified workspace, sidebar collapse and prompt settings, refusal of stale proposals after manual edits, desktop layout overflow, and cross-topic follow-ups preserving pinned context, request history, pending revisions and accepted code. The cross-topic test uses a mocked desktop provider; actual model interpretation of mixed questions remains a live acceptance check.
+- 39 domain/service/lifecycle/context/transcription/speech tests passed.
+- Eight browser workflow tests passed: visible insertion/deletion diffs and accept/undo, unified workspace, sidebar collapse and prompt settings, refusal of stale proposals after manual edits, desktop layout overflow, and cross-topic follow-ups preserving pinned context, request history, pending revisions and accepted code. The cross-topic test uses a mocked desktop provider; actual model interpretation of mixed questions remains a live acceptance check.
 - Production renderer/main/preload build passed.
 - Source formatted with Prettier.
 - Independent read-only code review completed. Its three substantive findings were fixed: cancellation before asynchronous request admission; release of local audio on terminal stops; and flushing the outgoing session's history snapshot.
@@ -28,3 +28,11 @@ Changed the new-install default to `gpt-4o-mini-transcribe` for the existing ser
 ## Automatic conversational responses
 
 Replaced keyword question detection with a model decision (`answer`, `wait`, `ignore`). Deterministic tests cover fragment accumulation, retained spoken context, automatic short replies, ignored speech, invalid decisions and cancellation on new speech or stop. A browser integration test emits transcripts and verifies automatic answers plus clarification context without clicking Generate. Its model decisions are mocked. Live decision accuracy, speaker ambiguity and end-to-end latency still require actual audio and API access.
+
+## Successive code revisions
+
+Browser regression tests cover three successive implementations, both with and without accepting the first proposal. They check the code sent for each follow-up and visible removed/inserted lines in the updated diff. The original implementation failed the unaccepted-proposal test by sending the starter file as the second request baseline. The corrected flow uses the latest proposal only while its working-document version remains valid. Manual edits retain precedence and stale-accept protection.
+
+## Bounded speech waiting and visible changes
+
+A wait decision now schedules one final interpretation after another 1.5 seconds of silence; the final provider schema allows answer or ignore only. New speech and pause cancel the pending recheck. Tests verify that answering resumes without another utterance. The code diff shows changed-region position and inserted/deleted line counts, with previous/next navigation.

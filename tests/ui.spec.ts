@@ -190,7 +190,7 @@ test('speech triggers answers without Generate and handles clarification replies
           routed.push(request);
           return {
             action:
-              request.text === 'Just a second'
+              request.text === 'Explain this design' && !request.finalize
                 ? 'wait'
                 : request.text === 'Thanks'
                   ? 'ignore'
@@ -255,4 +255,159 @@ test('speech triggers answers without Generate and handles clarification replies
   expect(state.answerRequest).toMatchObject({ speechContext: ['A parking lot for cars'] });
   expect(JSON.stringify(state.request.history)).toContain('How many exits');
   expect(state.request.recentSpeech).toEqual(['A parking lot for cars']);
+  await emit('Explain this design');
+  await expect
+    .poll(
+      () =>
+        page.evaluate(
+          () =>
+            (window as unknown as { speechTest: { answered: unknown[] } }).speechTest.answered
+              .length,
+        ),
+      { timeout: 8000 },
+    )
+    .toBe(3);
+  expect(
+    await page.evaluate(
+      () =>
+        (
+          window as unknown as { speechTest: { routed: Record<string, unknown>[] } }
+        ).speechTest.routed.at(-1)?.finalize,
+    ),
+  ).toBe(true);
 });
+
+for (const acceptFirst of [false, true]) {
+  test(`successive revisions highlight against the previous ${acceptFirst ? 'accepted code' : 'proposal'}`, async ({
+    page,
+  }) => {
+    const first = [
+      'class ParkingLot:',
+      '    capacity = 10',
+      ...Array.from({ length: 35 }, (_, i) => `    spot_${i} = ${i}`),
+      '    exits = 1',
+    ].join('\n');
+    const second = first
+      .replace('capacity = 10', 'capacity = 20')
+      .replace('exits = 1', 'exits = 2');
+    await page.addInitScript(
+      ({ first, second }) => {
+        const listeners = new Set<(event: unknown) => void>();
+        const requests: { code: string; id: string }[] = [];
+        Object.assign(window, {
+          revisionRequests: requests,
+          desktop: {
+            isDesktop: true,
+            getSettings: async () => ({
+              hasKey: true,
+              settings: {
+                model: 'test',
+                transcriptionModel: 'test',
+                language: 'python',
+                style: '',
+                profile: '',
+                prompts: { lld: '', dsa: '', behavioral: '' },
+                autoAnswer: false,
+                saveHistory: false,
+              },
+            }),
+            listSessions: async () => [],
+            cancel: async () => {},
+            cancelSpeech: async () => {},
+            stopAudio: async () => {},
+            onEvent: (callback: (event: unknown) => void) => {
+              listeners.add(callback);
+              return () => listeners.delete(callback);
+            },
+            answer: async (request: { code: string; id: string }) => {
+              requests.push(request);
+              const text =
+                'Updated implementation.\n```python\n' +
+                (requests.length === 1
+                  ? first
+                  : requests.length === 2
+                    ? second
+                    : second.replace('20', '30')) +
+                '\n```';
+              const finish = () =>
+                listeners.forEach((fn) => fn({ type: 'answer.done', id: request.id, text }));
+              if (requests.length === 4) Object.assign(window, { releaseRevision: finish });
+              else setTimeout(finish, 10);
+            },
+          },
+        });
+      },
+      { first, second },
+    );
+    await page.goto('/');
+    await page.locator('#question').fill('Implement a parking lot');
+    await page.getByRole('button', { name: 'Generate answer' }).click();
+    await expect(page.getByRole('button', { name: 'Accept changes' })).toBeEnabled();
+    if (acceptFirst) await page.getByRole('button', { name: 'Accept changes' }).click();
+    await page.locator('#question').fill('Increase the capacity to twenty');
+    await page.getByRole('button', { name: 'Generate answer' }).click();
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () =>
+            (window as unknown as { revisionRequests: { code: string }[] }).revisionRequests.length,
+        ),
+      )
+      .toBe(2);
+    const codeSent = await page.evaluate(
+      () =>
+        (window as unknown as { revisionRequests: { code: string }[] }).revisionRequests[1].code,
+    );
+    expect(codeSent).toBe(first);
+    const diff = page.getByTestId('code-diff');
+    await expect(diff.locator('.line-insert').first()).toBeVisible();
+    await expect(diff.locator('.line-delete').first()).toBeVisible();
+    await expect(diff.locator('.view-lines')).toContainText(['capacity = 10']);
+    await expect(diff.locator('.view-lines')).toContainText(['capacity = 20']);
+    await expect(diff.getByRole('status')).toHaveText('Change 1 of 2');
+    await expect(diff.locator('.diff-counts')).toContainText('+2');
+    await expect(diff.locator('.diff-counts')).toContainText('−2');
+    await diff.getByRole('button', { name: 'Next change' }).click();
+    await expect(diff.getByRole('status')).toHaveText('Change 2 of 2');
+    await expect(diff.locator('.view-lines')).toContainText(['exits = 2']);
+    await diff.getByRole('button', { name: 'Previous change' }).click();
+    await expect(diff.getByRole('status')).toHaveText('Change 1 of 2');
+    await page.getByRole('button', { name: 'Accept changes' }).click();
+    await expect(page.getByTestId('working-editor')).toContainText('capacity = 20');
+    await page.locator('#question').fill('Now increase capacity to thirty');
+    await page.getByRole('button', { name: 'Generate answer' }).click();
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () =>
+            (window as unknown as { revisionRequests: { code: string }[] }).revisionRequests.length,
+        ),
+      )
+      .toBe(3);
+    expect(
+      await page.evaluate(
+        () =>
+          (window as unknown as { revisionRequests: { code: string }[] }).revisionRequests[2].code,
+      ),
+    ).toBe(second);
+    await expect(diff.locator('.line-insert').first()).toBeVisible();
+    await expect(diff.locator('.line-delete').first()).toBeVisible();
+    await expect(diff.locator('.view-lines')).toContainText(['capacity = 20']);
+    await expect(diff.locator('.view-lines')).toContainText(['capacity = 30']);
+    await page.locator('#question').fill('Revise this again');
+    await page.getByRole('button', { name: 'Generate answer' }).click();
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () => (window as unknown as { revisionRequests: unknown[] }).revisionRequests.length,
+        ),
+      )
+      .toBe(4);
+    await page.getByRole('button', { name: 'Reject', exact: true }).click();
+    await page.evaluate(() =>
+      (window as unknown as { releaseRevision: () => void }).releaseRevision(),
+    );
+    await expect(page.getByRole('button', { name: 'Accept changes' })).toHaveCount(0);
+    await expect(page.getByTestId('working-editor')).toContainText('capacity = 20');
+  });
+}

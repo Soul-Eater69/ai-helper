@@ -47,6 +47,7 @@ export const answerRequestSchema = z
     speechContext: z.array(z.string().max(1600)).max(12).optional(),
     code: z.string().max(100000),
     codeVersion: z.number().int().nonnegative(),
+    codeSource: z.enum(['working', 'proposal']).optional(),
     language: z.enum(languages),
     history: z
       .array(z.object({ role: z.enum(['user', 'assistant']), content: z.string().max(20000) }))
@@ -64,6 +65,7 @@ export const speechRequestSchema = answerRequestSchema
     text: z.string().trim().min(1).max(20000),
     recentSpeech: z.array(z.string().max(1600)).max(12),
     currentResponse: z.string().max(6000),
+    finalize: z.boolean().optional(),
   })
   .strict();
 export type SpeechRequest = z.infer<typeof speechRequestSchema>;

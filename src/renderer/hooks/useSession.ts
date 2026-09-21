@@ -33,6 +33,7 @@ export function useSession() {
   const [doc, setDoc] = useState(createDocument(INITIAL_CODE));
   const [proposal, setProposal] = useState<Proposal | null>(null);
   const [proposalBase, setProposalBase] = useState('');
+  const [proposalBaseSource, setProposalBaseSource] = useState<'working' | 'proposal'>('working');
   const [turns, setTurns] = useState<Turn[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
   const [question, setQuestion] = useState('');
@@ -56,11 +57,16 @@ export function useSession() {
       (e) => setError(message(e)),
     ),
   );
-  const active = useRef<{ id: string; version: number; code: string } | null>(null);
+  const active = useRef<{
+    id: string;
+    version: number;
+    code: string;
+    source: 'working' | 'proposal';
+  } | null>(null);
   const audio = useRef<AudioCapture | null>(null);
   const speechQueue = useRef<SpeechQueue | null>(null);
-  const current = useRef({ settings, context, doc, turns, demo });
-  current.current = { settings, context, doc, turns, demo };
+  const current = useRef({ settings, context, doc, turns, demo, proposal });
+  current.current = { settings, context, doc, turns, demo, proposal };
   const api = () => (current.current.demo ? demoAPI : desktopAPI);
   const refreshSettings = useCallback(async () => {
     try {
@@ -108,7 +114,10 @@ export function useSession() {
         const old = active.current.id;
         setTurns((items) => items.map((t) => (t.id === old ? { ...t, status: 'cancelled' } : t)));
       }
-      active.current = { id, version: state.doc.version, code: state.doc.code };
+      const useProposal = !!state.proposal && state.proposal.baseVersion === state.doc.version;
+      const baseCode = useProposal ? state.proposal!.code : state.doc.code;
+      const source = useProposal ? ('proposal' as const) : ('working' as const);
+      active.current = { id, version: state.doc.version, code: baseCode, source };
       setBusy(true);
       setError('');
       setNotice('');
@@ -124,7 +133,8 @@ export function useSession() {
           question: text,
           context: state.context,
           speechContext: overrides?.recentSpeech,
-          code: state.doc.code,
+          code: baseCode,
+          codeSource: source,
           codeVersion: state.doc.version,
           language: state.settings.language,
           history,
@@ -144,11 +154,12 @@ export function useSession() {
   askRef.current = ask;
   useEffect(() => {
     speechQueue.current = new SpeechQueue(
-      (text, recentSpeech) => {
+      (text, recentSpeech, finalize) => {
         const state = current.current;
         return desktopAPI.routeSpeech({
           text,
           recentSpeech,
+          finalize,
           context: state.context,
           history: buildHistory(state.turns),
           currentResponse: state.turns.at(-1)?.answer.slice(-6000) ?? '',
@@ -179,6 +190,7 @@ export function useSession() {
           if (nextProposal) {
             setProposal(nextProposal);
             setProposalBase(captured.code);
+            setProposalBaseSource(captured.source);
           }
           active.current = null;
           setBusy(false);
@@ -334,6 +346,7 @@ export function useSession() {
     doc,
     proposal,
     proposalBase,
+    proposalBaseSource,
     turns,
     selected,
     setSelected,
@@ -359,6 +372,7 @@ export function useSession() {
     load,
     setCode: (code: string) => setDoc((value) => editDocument(value, code)),
     reject: () => {
+      if (active.current?.source === 'proposal') void stopAnswer();
       setProposal(null);
       setNotice('Proposal dismissed. Your code is unchanged.');
     },

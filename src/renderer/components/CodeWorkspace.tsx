@@ -75,7 +75,9 @@ export default function CodeWorkspace({ work }: { work: Workspace }) {
           <span>
             {stale
               ? 'Your code changed. Generate a fresh proposal before applying.'
-              : 'A new version is ready. Review it before replacing your code.'}
+              : work.proposalBaseSource === 'proposal'
+                ? 'Changes since the previous proposal. Accept applies the full updated version.'
+                : 'Changes against your working code. Review before accepting.'}
           </span>
         </div>
       )}
