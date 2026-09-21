@@ -1110,3 +1110,33 @@ svg {
 .story-card select[multiple] {
   min-height: 92px;
 }
+
+/* Diff summary and change navigation */
+.diff-key {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-variant-numeric: tabular-nums;
+}
+.diff-where {
+  margin-left: 6px;
+  opacity: 0.72;
+}
+.diff-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: 10px;
+  font-variant-numeric: tabular-nums;
+}
+.diff-nav button {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 5px;
+  border-radius: 6px;
+}
+.diff-nav span {
+  min-width: 34px;
+  text-align: center;
+  opacity: 0.72;
+}

@@ -189,3 +189,23 @@ describe('narration while coding, and staying open to follow-ups', () => {
     expect(text).toMatch(/fenced block tagged text holding a short trace/i);
   });
 });
+
+describe('lists are allowed only where the reader is typing', () => {
+  const text = buildInstructions(settingsSchema.parse({}));
+
+  it('keeps spoken answers as prose, and says why', () => {
+    expect(text).toMatch(/a list read aloud sounds like reading a slide/i);
+    expect(text).toMatch(/including every behavioural answer, stays prose/i);
+  });
+
+  it('allows a short list for code narration and for complexity and edge cases', () => {
+    expect(text).toMatch(/the reader is typing and can only glance between keystrokes/i);
+    expect(text).toMatch(/short flat list, three to five items/i);
+  });
+
+  it('asks the model to say what a change does, since the diff only shows where', () => {
+    expect(text).toMatch(/CHANGING EXISTING CODE/);
+    expect(text).toMatch(/what it did before and what it does now/i);
+    expect(text).toMatch(/shows where the lines differ but not what the change was for/i);
+  });
+});

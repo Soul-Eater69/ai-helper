@@ -1,14 +1,36 @@
 import { useEffect, useState } from 'react';
-import { CodeEditor, CodeDiff } from './MonacoSurface';
-import { Check, Copy, FileCode2, GitCompareArrows, Undo2, X } from 'lucide-react';
+import { CodeEditor, CodeDiff, type DiffSummary } from './MonacoSurface';
+import {
+  Check,
+  ChevronDown,
+  ChevronUp,
+  Copy,
+  FileCode2,
+  GitCompareArrows,
+  Undo2,
+  X,
+} from 'lucide-react';
 import type { Workspace } from '../hooks/useSession';
 import { languages } from '../../shared/contracts';
+/** "line 14" or "lines 14-17", for the changed run as it appears in the proposal. */
+function describe(region: { start: number; end: number }): string {
+  return region.end > region.start ? `${region.start}-${region.end}` : `${region.start}`;
+}
+
 export default function CodeWorkspace({ work }: { work: Workspace }) {
   const [view, setView] = useState<'editor' | 'diff'>('editor');
+  const [summary, setSummary] = useState<DiffSummary | null>(null);
+  const [focusIndex, setFocusIndex] = useState(0);
   useEffect(() => {
     if (work.proposal) setView('diff');
     else setView('editor');
+    // A new proposal is a new set of changes; drop what the last one reported.
+    setSummary(null);
+    setFocusIndex(0);
   }, [work.proposal]);
+  const regions = summary?.regions ?? [];
+  const step = (by: number) =>
+    setFocusIndex((current) => (current + by + regions.length) % Math.max(regions.length, 1));
   const stale = !!work.proposal && work.proposal.baseVersion !== work.doc.version;
   return (
     <section className="code-panel" aria-label="Code workspace">
@@ -85,6 +107,8 @@ export default function CodeWorkspace({ work }: { work: Workspace }) {
             original={work.proposalBase}
             modified={work.proposal.code}
             language={work.settings.language}
+            onSummary={setSummary}
+            focusIndex={focusIndex}
           />
         ) : (
           <CodeEditor
@@ -97,9 +121,39 @@ export default function CodeWorkspace({ work }: { work: Workspace }) {
       <div className="code-footer">
         {work.proposal ? (
           <>
-            <span className="diff-key">
-              <i className="added" /> added <i className="removed" /> removed
+            <span className="diff-key" data-testid="diff-summary">
+              {summary === null ? (
+                'Comparing…'
+              ) : regions.length === 0 ? (
+                'No change to your code'
+              ) : (
+                <>
+                  <i className="added" />+{summary.added}
+                  <i className="removed" />-{summary.removed}
+                  <span className="diff-where">
+                    {regions.length === 1
+                      ? `${regions[0].end > regions[0].start ? 'lines' : 'line'} ${describe(regions[0])}`
+                      : `${regions.length} places: ${regions
+                          .slice(0, 3)
+                          .map(describe)
+                          .join(', ')}${regions.length > 3 ? '…' : ''}`}
+                  </span>
+                </>
+              )}
             </span>
+            {regions.length > 1 && (
+              <span className="diff-nav">
+                <button aria-label="Previous change" onClick={() => step(-1)}>
+                  <ChevronUp size={14} />
+                </button>
+                <span>
+                  {focusIndex + 1}/{regions.length}
+                </span>
+                <button aria-label="Next change" onClick={() => step(1)}>
+                  <ChevronDown size={14} />
+                </button>
+              </span>
+            )}
             <div className="spacer" />
             <button className="dark-button" onClick={work.reject}>
               <X size={14} /> Reject

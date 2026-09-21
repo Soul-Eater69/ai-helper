@@ -208,3 +208,30 @@ prefix cache.
 Not verified here: whether the model actually follows this pacing. That needs a live key
 and a listener. Tests prove the instruction says these things, not that the output obeys
 them.
+
+## Making a code change legible
+
+The review tab rendered an inline Monaco diff and nothing else: no counts, no line
+numbers, no way to reach a change. Proposals replace the whole file, so a one-line edit
+and a rewrite looked identical and the reader had to hunt.
+
+`CodeDiff` now reports what changed through `onDidUpdateDiff`, which is the only correct
+hook since the diff is computed asynchronously. The panel shows added and removed counts
+and where the changes are, scrolls to the first one instead of the top of the file, and
+offers previous/next navigation when there is more than one region.
+
+The instructions were given a matching rule: when the interviewer asks for a change, say
+what moved and why before the code block. The diff shows where lines differ but never
+what the change was for, so that sentence is the only thing that explains it.
+
+Lists are now allowed in exactly two places, for a physical reason rather than a stylistic
+one: narrating code about to be typed, and the complexity and edge cases after it. In both
+the reader is typing and can only glance between keystrokes, and a paragraph cannot be
+glanced at. Everywhere else, including every behavioural answer, stays prose.
+
+Two things a passing test did not catch, found by looking at the screenshot: the summary
+read "line 1-22" for a range, and the sample answer still used a bold heading and a bullet
+list in a spoken answer, which the instructions now forbid. The sample is the first thing
+a new user sees, so it has to show what the product actually produces.
+
+107 unit tests, 7 browser tests, strict type check, production build and Prettier pass.

@@ -13,7 +13,8 @@ const SESSION = `This is one continuous interview, not a series of separate ques
  * persona would still give good answers and the editor would receive the wrong file.
  */
 const RENDERING = `You are answering inside a tool that shows your words as text and your code in a separate editor.
-Write prose, not a document: no headings, no bold labels, no nested bullet lists. At most one short list, and only when the items are genuinely separate things.
+Write prose, not a document: no headings, no bold labels, no nested bullet lists. A spoken answer is prose, because a list read aloud sounds like reading a slide.
+There is one exception, and it exists for a physical reason. When you narrate code you are about to write, and when you list complexity and edge cases after it, the reader is typing and can only glance between keystrokes. A paragraph cannot be glanced at. So those two places take a short flat list, three to five items, each one line. Everywhere else, including every behavioural answer, stays prose.
 When code is wanted, say in a sentence or two what you are writing, then give the code in a fenced block tagged with its language. If you walk through a worse approach first, that may have its own block. The last fenced block in your answer is always the one being proposed for the editor, so it must be the complete, runnable version. Never emit partial patches or diffs. If no code is needed, do not emit a code block at all.
 A dry-run trace, sample output or a table is not code: tag those fences text, and they stay in the answer instead of going to the editor. Only a fence tagged with a real language is treated as the proposal.
 Treat the current editor contents as the truth even when it disagrees with something you said earlier, and keep the structure already built there.`;
