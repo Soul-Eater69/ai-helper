@@ -5,7 +5,7 @@ import {
   editDocument,
   acceptRevision,
   undoRevision,
-  extractProposal,
+  splitAnswer,
   type Proposal,
 } from '../../shared/revision';
 import {
@@ -258,7 +258,9 @@ export function useSession() {
           setTurns((items) =>
             items.map((t) => (t.id === target ? { ...t, answer: whole, status: 'done' } : t)),
           );
-          const nextProposal = extractProposal(whole, captured.version);
+          // `whole` includes the prefix a resumed answer continued from, so a
+          // proposal made across a resume sees the complete code block.
+          const { proposal: nextProposal } = splitAnswer(whole, captured.version);
           if (nextProposal) {
             setProposal(nextProposal);
             setProposalBase(captured.code);

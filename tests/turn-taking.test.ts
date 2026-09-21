@@ -55,3 +55,23 @@ describe('resuming an interrupted answer', () => {
     expect(prompt).toMatch(/continue from exactly where/i);
   });
 });
+
+describe('a code block split across a resume', () => {
+  it('is only complete once the prefix and continuation are joined', async () => {
+    const { splitAnswer } = await import('../src/shared/revision');
+    // What streamed before the interviewer cut in, and what came back after.
+    const prefix = "Here's the approach:\n```python\ndef two_sum(nums, target):\n";
+    const continuation = '    seen = {}\n    return []\n```\nThat runs in O(n).';
+
+    // The continuation alone has no opening fence, so it proposes nothing.
+    expect(splitAnswer(continuation, 0).proposal).toBeNull();
+
+    // Joined, the block is whole -- which is why the proposal is taken from
+    // `prefix + delta` rather than from the resumed response on its own.
+    const { proposal, spoken } = splitAnswer(prefix + continuation, 7);
+    expect(proposal?.code).toBe('def two_sum(nums, target):\n    seen = {}\n    return []');
+    expect(proposal?.baseVersion).toBe(7);
+    expect(spoken).toContain('That runs in O(n).');
+    expect(spoken).not.toContain('seen = {}');
+  });
+});
