@@ -4,12 +4,12 @@ test('demo code is reviewed, accepted, and undone explicitly', async ({ page }) 
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
   await page.goto('/');
-  await expect(
-    page.getByRole('heading', { name: 'Your next good answer starts here.' }),
-  ).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Let’s work through it.' })).toBeVisible();
   await page.getByRole('button', { name: 'Try a sample session' }).click();
   await expect(page.getByRole('button', { name: 'Accept changes' })).toBeEnabled();
   await expect(page.getByText('Sample session · no API calls')).toBeVisible();
+  await expect(page.getByTestId('code-diff').locator('.line-insert').first()).toBeVisible();
+  await expect(page.getByTestId('code-diff').locator('.line-delete').first()).toBeVisible();
   await page.screenshot({ path: 'test-results/code-review.png', fullPage: true });
   await page.getByRole('button', { name: 'Accept changes' }).click();
   await expect(page.getByText('Revision accepted')).toBeVisible();
@@ -24,9 +24,11 @@ test('one workspace and editable prompts work', async ({ page }) => {
   await expect(page.getByRole('navigation', { name: 'Interview modes' })).toHaveCount(0);
   await page.getByRole('button', { name: 'Pin code', exact: true }).click();
   await expect(page.getByTestId('working-editor')).toBeVisible();
-  await expect(
-    page.getByRole('heading', { name: 'Your next good answer starts here.' }),
-  ).toBeVisible();
+  await page.getByRole('button', { name: 'Hide sidebar' }).click();
+  await expect(page.getByRole('button', { name: 'Settings', exact: true })).toBeHidden();
+  await page.getByRole('button', { name: 'Show sidebar' }).click();
+  await expect(page.getByRole('button', { name: 'Settings', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Let’s work through it.' })).toBeVisible();
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
   await page.getByLabel('Speaking style').fill('Short natural English');
   await page.getByRole('button', { name: 'Save settings' }).click();

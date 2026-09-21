@@ -1,10 +1,9 @@
 import { useState } from 'react';
 import {
-  AudioLines,
   Braces,
   BrainCircuit,
   CheckCircle2,
-  ChevronRight,
+  PanelLeft,
   CircleHelp,
   Code2,
   Mic,
@@ -27,22 +26,21 @@ export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [source, setSource] = useState<'system' | 'microphone'>('system');
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [codePinned, setCodePinned] = useState(false);
   const showCode = codePinned || !!work.proposal || work.doc.code !== INITIAL_CODE;
   const listening = ['ready', 'connecting', 'reconnecting'].includes(work.audioStatus);
   return (
-    <div className="app-shell">
-      <aside className="sidebar">
+    <div className={`app-shell ${sidebarOpen ? '' : 'sidebar-collapsed'}`}>
+      <aside className="sidebar" id="session-sidebar" inert={!sidebarOpen}>
         <div className="brand">
           <span className="brand-symbol">
             <Braces size={23} />
           </span>
-          <span>
-            ai helper<span className="brand-caption">INTERVIEW WORKSPACE</span>
-          </span>
+          <span>AI Helper</span>
         </div>
         <button className="new-session" onClick={() => void work.reset()}>
-          <Plus size={17} /> New session <span>↗</span>
+          <Plus size={17} /> New session
         </button>
         <details className="context-notes">
           <summary>Requirements &amp; context</summary>
@@ -57,14 +55,12 @@ export default function App() {
         </details>
         <div className="sidebar-divider" />
         <div className="nav-label transcript-label">
-          LIVE TRANSCRIPT <span className={listening ? 'green-dot' : 'neutral-dot'} />
+          Transcript <span className={listening ? 'green-dot' : 'neutral-dot'} />
         </div>
         <div className="transcript-list">
           {work.transcript.length === 0 && !work.partial ? (
             <div className="transcript-empty">
-              <AudioLines size={24} />
-              <p>A little context goes a long way.</p>
-              <span>Your conversation will appear here when listening starts.</span>
+              <p>Your conversation appears here when listening starts.</p>
             </div>
           ) : (
             <>
@@ -141,8 +137,16 @@ export default function App() {
       <main className="main-workspace">
         <header className="topbar">
           <div className="breadcrumb">
-            Workspace <ChevronRight size={13} />
-            <span>Interview session</span>
+            <button
+              className="icon-button sidebar-toggle"
+              aria-label={sidebarOpen ? 'Hide sidebar' : 'Show sidebar'}
+              aria-expanded={sidebarOpen}
+              aria-controls="session-sidebar"
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+            >
+              <PanelLeft size={20} />
+            </button>
+            <h2>Interview session</h2>
           </div>
           <div className="topbar-right">
             <span className="connection-pill">
@@ -158,25 +162,8 @@ export default function App() {
             </button>
           </div>
         </header>
-        <div className="workspace-heading">
-          <div className="workspace-title">
-            <span className="mode-icon">
-              <BrainCircuit size={24} />
-            </span>
-            <div>
-              <h2>Interview session</h2>
-              <p>Design, code and experience — one continuous conversation</p>
-            </div>
-          </div>
-          <span className="session-badge">
-            <span className="neutral-dot" /> {work.demo ? 'SAMPLE' : 'SESSION 01'}
-          </span>
-        </div>
         <div className="session-controls">
           <div className="adaptive-controls">
-            <span>
-              <Sparkles size={14} /> Follows your conversation
-            </span>
             <button
               className="subtle"
               aria-pressed={codePinned}

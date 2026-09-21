@@ -18,47 +18,19 @@ export default function AnswerPanel({
     ) ?? '';
   return (
     <section className="answer-panel" aria-label="Answer workspace">
-      <div className="panel-heading">
-        <span>
-          <Sparkles size={16} /> Answer
-        </span>
-        <span className="muted">{work.demo ? 'Sample content' : 'In your words'}</span>
-      </div>
-      <div className="answer-scroll">
+      <div className={`answer-scroll ${turn ? '' : 'is-empty'}`}>
         {!turn ? (
           <div className="empty-state">
-            <div className="empty-icon">
-              <Sparkles size={25} />
+            <h1>Let’s work through it.</h1>
+            <p>Bring a question. We’ll take it from there.</p>
+            <div className="empty-actions">
+              <button className="primary" onClick={openSettings}>
+                Personalize your answers
+              </button>
+              <button className="text-button" onClick={() => void work.sample()}>
+                Try a sample session
+              </button>
             </div>
-            <div className="eyebrow">THINK CLEARLY. SPEAK NATURALLY.</div>
-            <h1>Your next good answer starts here.</h1>
-            <p>Work through the question, explain the choices, and make the code your own.</p>
-            <div className="getting-started">
-              <div>
-                <span>01</span>
-                <p>
-                  <strong>Make it yours</strong>Add your experience and speaking style.
-                </p>
-              </div>
-              <div>
-                <span>02</span>
-                <p>
-                  <strong>Bring a question</strong>Type it below or start listening.
-                </p>
-              </div>
-              <div>
-                <span>03</span>
-                <p>
-                  <strong>Build on your answer</strong>Review follow-ups and code changes.
-                </p>
-              </div>
-            </div>
-            <button className="primary" onClick={openSettings}>
-              Set up your workspace <ArrowUpRight size={16} />
-            </button>
-            <button className="text-button" onClick={() => void work.sample()}>
-              Try a sample session <span>→</span>
-            </button>
           </div>
         ) : (
           <>
@@ -126,7 +98,7 @@ export default function AnswerPanel({
           void work.ask(work.question);
         }}
       >
-        <label htmlFor="question">
+        <label className="sr-only" htmlFor="question">
           {work.turns.length
             ? 'Ask a follow-up or change the requirements'
             : 'What would you like to work through?'}
@@ -136,7 +108,7 @@ export default function AnswerPanel({
           value={work.question}
           maxLength={20000}
           onChange={(event) => work.setQuestion(event.target.value)}
-          placeholder="Ask about design, algorithms, your experience, or a follow-up…"
+          placeholder="Ask anything, or add a follow-up…"
           onKeyDown={(event) => {
             if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
               event.preventDefault();

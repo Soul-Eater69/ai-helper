@@ -2,9 +2,9 @@ import { useEffect, useRef } from 'react';
 import * as monaco from 'monaco-editor';
 
 const options: monaco.editor.IStandaloneEditorConstructionOptions = {
-  theme: 'helper-dark',
+  theme: 'helper-light',
   minimap: { enabled: false },
-  fontSize: 13,
+  fontSize: 14,
   lineHeight: 23,
   fontFamily: "'Cascadia Code', Consolas, monospace",
   padding: { top: 20 },
