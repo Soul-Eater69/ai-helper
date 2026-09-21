@@ -124,6 +124,17 @@ export default function SettingsDialog({ work, close }: { work: Workspace; close
         </section>
         <section>
           <h3>Sound like yourself</h3>
+          <label htmlFor="candidate-name">Your name</label>
+          <input
+            id="candidate-name"
+            value={draft.candidateName}
+            maxLength={120}
+            placeholder="Spoken as your own name when you introduce yourself"
+            onChange={(e) => setDraft({ ...draft, candidateName: e.target.value })}
+          />
+          <p className="field-help">
+            Stays on this device. Leave blank and the answers avoid using a name at all.
+          </p>
           <label htmlFor="style">Speaking style</label>
           <textarea
             id="style"

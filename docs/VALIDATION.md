@@ -72,3 +72,30 @@ items in TESTING.md.
 Not verified here: whether answers actually sound more natural from a live model, which
 needs a real key and a listener. Prompt-quality claims are unproven until item 9 in
 TESTING.md is run with audio.
+
+## Candidate persona as the system instruction
+
+The user's Amazon SDE interview persona is now the system instruction, stored verbatim in
+`src/shared/candidate-prompt.ts`. It replaces the previous hand-written topic guidance
+rather than stacking on top of it, since both covered delivery and would have contradicted
+each other.
+
+Three things are appended because the persona does not cover them and the app needs them:
+
+- Session framing. Questions are mixed and a topic change does not reset the session.
+- Rendering. Answers are shown as text and code goes to a separate editor, so no headings
+  or nested lists, and **the last fenced block is the workspace proposal**. Without this
+  the persona would still answer well while the editor received the wrong file.
+- Boundaries. Prompt-injection resistance, no invented experience, no execution tools.
+  Placed last so they are the most recent thing the model reads.
+
+The candidate's name is a setting, not source. `AGENTS.md` forbids committing personal
+details, and a blank name expands to "the candidate" so the opening sentence still reads
+correctly.
+
+The assembled instruction is roughly 4,500 tokens and is sent on every turn.
+
+60 unit tests, 6 browser tests, strict type check, production build and Prettier pass.
+
+Not verified here: whether answers actually follow the persona. That needs a live key and
+a listener, and is the acceptance item this repo has never been able to close in CI.

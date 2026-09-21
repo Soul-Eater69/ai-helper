@@ -20,6 +20,8 @@ export const settingsSchema = z
       .regex(/^[a-zA-Z0-9_.:-]+$/)
       .default('gpt-4o-mini-transcribe'),
     language: z.enum(languages).default('python'),
+    /** Spoken as the candidate's own name; blank falls back to a neutral phrase. */
+    candidateName: z.string().trim().max(120).default(''),
     style: z
       .string()
       .max(6000)

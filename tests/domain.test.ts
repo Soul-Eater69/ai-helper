@@ -87,12 +87,12 @@ describe('input and prompt boundaries', () => {
     const text = buildInstructions(settings);
     expect(text).toMatch(/never invent/i);
     expect(text).toMatch(/STAR/);
-    expect(text).toMatch(/simple.*English/i);
+    expect(text).toMatch(/simple, natural, everyday English/i);
   });
   it('preserves one-at-a-time clarification and reviewable complete code in LLD', () => {
     const text = buildInstructions(settingsSchema.parse({}));
-    expect(text).toMatch(/one clarifying question/i);
-    expect(text).toMatch(/complete.*code/i);
+    expect(text).toMatch(/one meaningful clarifying question at a time/i);
+    expect(text).toMatch(/complete, runnable version/i);
   });
 });
 
