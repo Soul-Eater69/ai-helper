@@ -5,7 +5,7 @@ import {
   editDocument,
   acceptRevision,
   undoRevision,
-  extractProposal,
+  splitAnswer,
   type Proposal,
 } from '../../shared/revision';
 import {
@@ -15,7 +15,9 @@ import {
   type SavedSession,
 } from '../../shared/contracts';
 import { SpeechQueue } from '../speech-queue';
-import { buildHistory } from '../../shared/history';
+import { buildHistory, buildRouterHistory } from '../../shared/history';
+import { buildResumePrompt, classifyInterruption } from '../../shared/turn-taking';
+import { selectStories } from '../../shared/story-bank';
 import { SessionSaver } from '../session-saver';
 import { AudioCapture } from '../audio/capture';
 export interface Turn {
@@ -23,6 +25,10 @@ export interface Turn {
   question: string;
   answer: string;
   status: 'streaming' | 'done' | 'cancelled' | 'error';
+  /** Cut off by a change of subject and not resumed. */
+  interrupted?: boolean;
+  /** A brief aside answered without abandoning the answer above it. */
+  detour?: boolean;
 }
 export const INITIAL_CODE =
   '# Your working code goes here.\n# AI changes appear as proposals for you to review.\n';
@@ -56,7 +62,19 @@ export function useSession() {
       (e) => setError(message(e)),
     ),
   );
-  const active = useRef<{ id: string; version: number; code: string } | null>(null);
+  const active = useRef<{
+    id: string;
+    /** The turn this request writes into; differs from `id` when resuming. */
+    turnId: string;
+    version: number;
+    code: string;
+    /** Text already on screen for that turn, which a resumed answer continues. */
+    prefix: string;
+  } | null>(null);
+  /** Set while a detour is answered, so the interrupted answer can resume after it. */
+  const pendingResume = useRef<{ turnId: string; question: string; prefix: string } | null>(null);
+  /** Stories already told this session, so later rounds reach for a different one. */
+  const usedStories = useRef<string[]>([]);
   const audio = useRef<AudioCapture | null>(null);
   const speechQueue = useRef<SpeechQueue | null>(null);
   const current = useRef({ settings, context, doc, turns, demo });
@@ -65,7 +83,9 @@ export function useSession() {
   const refreshSettings = useCallback(async () => {
     try {
       const result = await desktopAPI.getSettings();
-      setSettings(result.settings);
+      // Parsed rather than trusted: a payload from an older vault, or from a build that
+      // predates a field, must not reach the rest of the hook missing its defaults.
+      setSettings(settingsSchema.parse(result.settings));
       setHasKey(result.hasKey);
       setSessions(await desktopAPI.listSessions());
     } catch (e) {
@@ -80,19 +100,31 @@ export function useSession() {
     void desktopAPI.cancelSpeech();
     const previous = active.current;
     active.current = null;
+    pendingResume.current = null;
     setBusy(false);
     if (previous)
       setTurns((items) =>
-        items.map((t) => (t.id === previous.id ? { ...t, status: 'cancelled' } : t)),
+        items.map((t) => (t.id === previous.turnId ? { ...t, status: 'cancelled' } : t)),
       );
     await api().cancel();
   }, []);
   const ask = useCallback(
     async (
       text: string,
-      overrides?: { demo?: boolean; speech?: boolean; recentSpeech?: string[] },
+      overrides?: {
+        demo?: boolean;
+        speech?: boolean;
+        recentSpeech?: string[];
+        /** Rewrite this existing turn rather than opening another, for a correction. */
+        reviseTurnId?: string;
+        /** Continue this turn's text rather than replacing it, after a detour. */
+        resume?: { turnId: string; question: string; prefix: string };
+        /** Render as a short aside beneath the answer it interrupted. */
+        detour?: boolean;
+      },
     ) => {
-      if (!text.trim()) return;
+      // A resume carries no new question; its prompt is built from the saved prefix.
+      if (!text.trim() && !overrides?.resume) return;
       if (!overrides?.speech) {
         speechQueue.current?.stop();
         void desktopAPI.cancelSpeech();
@@ -104,26 +136,64 @@ export function useSession() {
         return;
       }
       const id = crypto.randomUUID();
-      if (active.current) {
-        const old = active.current.id;
-        setTurns((items) => items.map((t) => (t.id === old ? { ...t, status: 'cancelled' } : t)));
+      const resume = overrides?.resume;
+      const revise = overrides?.reviseTurnId;
+      // A resumed answer continues the turn it was cut off from; a correction rewrites
+      // that turn in place. Only a genuinely new question opens another entry.
+      const turnId = resume?.turnId ?? revise ?? id;
+      const prefix = resume ? resume.prefix : '';
+      if (active.current && active.current.turnId !== turnId) {
+        const cut = active.current.turnId;
+        setTurns((items) =>
+          items.map((t) => (t.id === cut ? { ...t, status: 'cancelled', interrupted: true } : t)),
+        );
       }
-      active.current = { id, version: state.doc.version, code: state.doc.code };
+      active.current = { id, turnId, version: state.doc.version, code: state.doc.code, prefix };
       setBusy(true);
       setError('');
       setNotice('');
-      setSelected(id);
-      setTurns((items) => [
-        ...(items.length >= 30 ? [items[0], ...items.slice(-28)] : items),
-        { id, question: text.trim(), answer: '', status: 'streaming' as const },
-      ]);
+      setSelected(turnId);
+      setTurns((items) => {
+        if (items.some((t) => t.id === turnId))
+          return items.map((t) =>
+            t.id === turnId
+              ? {
+                  ...t,
+                  // A revision restarts the text; a resume keeps what was already read.
+                  answer: resume ? t.answer : '',
+                  question: revise ? `${t.question} — ${text.trim()}` : t.question,
+                  status: 'streaming' as const,
+                  interrupted: false,
+                }
+              : t,
+          );
+        return [
+          ...(items.length >= 30 ? [items[0], ...items.slice(-28)] : items),
+          {
+            id: turnId,
+            question: text.trim(),
+            answer: '',
+            status: 'streaming' as const,
+            detour: overrides?.detour,
+          },
+        ];
+      });
       const history = buildHistory(state.turns);
+      // Resuming continues an answer whose stories were already chosen; re-selecting
+      // against the continuation prompt would swap the story mid-sentence.
+      const picked = resume
+        ? []
+        : selectStories(text, state.settings.stories, { usedIds: usedStories.current });
+      const storyIds = picked.map((entry) => entry.story.id);
+      if (storyIds.length)
+        usedStories.current = [...new Set([...usedStories.current, ...storyIds])].slice(-20);
       try {
         await (useDemo ? demoAPI : desktopAPI).answer({
           id,
-          question: text,
+          question: resume ? buildResumePrompt(resume.question, resume.prefix) : text,
           context: state.context,
           speechContext: overrides?.recentSpeech,
+          storyIds,
           code: state.doc.code,
           codeVersion: state.doc.version,
           language: state.settings.language,
@@ -133,8 +203,9 @@ export function useSession() {
         if (active.current?.id === id) {
           setBusy(false);
           active.current = null;
+          pendingResume.current = null;
           setError(message(e));
-          setTurns((items) => items.map((t) => (t.id === id ? { ...t, status: 'error' } : t)));
+          setTurns((items) => items.map((t) => (t.id === turnId ? { ...t, status: 'error' } : t)));
         }
       }
     },
@@ -144,18 +215,43 @@ export function useSession() {
   askRef.current = ask;
   useEffect(() => {
     speechQueue.current = new SpeechQueue(
-      (text, recentSpeech) => {
+      (text, recentSpeech, speakerStopped) => {
         const state = current.current;
         return desktopAPI.routeSpeech({
           text,
           recentSpeech,
+          speakerStopped,
           context: state.context,
-          history: buildHistory(state.turns),
-          currentResponse: state.turns.at(-1)?.answer.slice(-6000) ?? '',
+          history: buildRouterHistory(state.turns),
+          currentResponse: state.turns.at(-1)?.answer.slice(-1200) ?? '',
         });
       },
       (text, recentSpeech) => {
         setQuestion(text);
+        // The router already decided this deserves a response. What it does not decide
+        // is what an approved utterance means for an answer already in flight.
+        const live = active.current;
+        if (!live) {
+          void askRef.current(text, { speech: true, recentSpeech });
+          return;
+        }
+        const openTurn = current.current.turns.find((t) => t.id === live.turnId);
+        const answeredSoFar = openTurn?.answer ?? '';
+        const kind = classifyInterruption(text, { answeredSoFar });
+        if (kind === 'revision') {
+          setNotice('Updated — rewriting that answer with the new requirement.');
+          void askRef.current(text, { speech: true, recentSpeech, reviseTurnId: live.turnId });
+          return;
+        }
+        if (kind === 'side_question') {
+          pendingResume.current = {
+            turnId: live.turnId,
+            question: openTurn?.question ?? '',
+            prefix: answeredSoFar,
+          };
+          void askRef.current(text, { speech: true, recentSpeech, detour: true });
+          return;
+        }
         void askRef.current(text, { speech: true, recentSpeech });
       },
       setSpeechStatus,
@@ -164,18 +260,22 @@ export function useSession() {
     const event = (event: AppEvent) => {
       if (event.type.startsWith('answer.')) {
         if (!('id' in event) || event.id !== active.current?.id) return;
+        // A resumed answer renders into the turn it was cut off from, so events are
+        // addressed by turnId rather than the request id that produced them.
+        const captured = active.current;
+        const target = captured.turnId;
         if (event.type === 'answer.delta')
           setTurns((items) =>
-            items.map((t) => (t.id === event.id ? { ...t, answer: t.answer + event.text } : t)),
+            items.map((t) => (t.id === target ? { ...t, answer: t.answer + event.text } : t)),
           );
         if (event.type === 'answer.done') {
-          const captured = active.current!;
+          const whole = captured.prefix + event.text;
           setTurns((items) =>
-            items.map((t) =>
-              t.id === event.id ? { ...t, answer: event.text, status: 'done' } : t,
-            ),
+            items.map((t) => (t.id === target ? { ...t, answer: whole, status: 'done' } : t)),
           );
-          const nextProposal = extractProposal(event.text, captured.version);
+          // `whole` includes the prefix a resumed answer continued from, so a
+          // proposal made across a resume sees the complete code block.
+          const { proposal: nextProposal } = splitAnswer(whole, captured.version);
           if (nextProposal) {
             setProposal(nextProposal);
             setProposalBase(captured.code);
@@ -183,12 +283,19 @@ export function useSession() {
           active.current = null;
           setBusy(false);
           setSpeechStatus('');
+          const waiting = pendingResume.current;
+          if (waiting && waiting.turnId !== target) {
+            pendingResume.current = null;
+            setNotice('Picking your answer back up where it stopped.');
+            void askRef.current('', { speech: true, resume: waiting });
+          }
         }
         if (event.type === 'answer.error' || event.type === 'answer.cancelled') {
           if (event.type === 'answer.error') setError(event.message);
+          pendingResume.current = null;
           setTurns((items) =>
             items.map((t) =>
-              t.id === event.id
+              t.id === target
                 ? { ...t, status: event.type === 'answer.error' ? 'error' : 'cancelled' }
                 : t,
             ),
@@ -282,6 +389,7 @@ export function useSession() {
     await audio.current?.stop();
     speechQueue.current?.stop(true);
     void desktopAPI.cancelSpeech();
+    usedStories.current = [];
     sessionId.current = crypto.randomUUID();
     setContext('');
     setTurns([]);

@@ -49,6 +49,33 @@ Transcription uses English settings. With **Respond to conversation automaticall
 
 If you saved settings with the earlier `gpt-live-transcribe` default, change **Settings → Transcription model** to `gpt-4o-mini-transcribe`, save, and restart listening. Saved model choices are not overwritten by updates. This app uses server voice activity detection to commit speech turns; the live model configuration can reject that setting. Startup errors now distinguish authentication, HTTP access/rate limits, configuration rejection and network failure. Provider error codes and parameter names are shown without raw provider messages or credentials.
 
+### Listening continuously, and being interrupted
+
+Press **Start listening** once. The session stays live for the whole interview: it keeps
+one transcription socket open across every question, reconnects silently on a drop, and
+never needs another click. Pausing is explicit.
+
+The speech router decides whether what it heard deserves a response — a complete
+question, a correction, or a short reply to a clarification all count, while filler,
+background talk and someone thinking out loud do not. It also waits when a question is
+still being formed, so a pause mid-sentence does not start a second answer.
+
+Speech the router has approved is then routed again by what it means for an answer that
+is still streaming:
+
+| What was said                     | What happens                                                                              |
+| --------------------------------- | ----------------------------------------------------------------------------------------- |
+| "what's the complexity of that?"  | Answered as a short aside, then the interrupted answer **resumes from where it stopped**. |
+| "actually, return all pairs"      | The premise changed, so the answer is rewritten in place — same entry, new requirement.   |
+| "okay, now design a rate limiter" | A new entry. The interrupted one is kept and marked.                                      |
+
+Resuming re-sends what was already written and asks the model to continue from exactly
+there, so nothing is repeated. A correction never resumes: continuing an answer whose
+premise was just withdrawn would keep writing something already rejected.
+
+Routing is a heuristic over the transcript, not full understanding. Turn off automatic
+answers in Settings to review every transcript in the question box before sending.
+
 ### Code review
 
 Ask a question and review the suggested explanation. The code panel opens when code is proposed and stays available once you have working code; **Pin code** also opens it at any time. Non-code follow-ups preserve pending proposals. Complete code appears under **Review changes**; green marks additions and red marks removals. **Accept changes** replaces the workspace only if its version still matches the version used for generation. **Reject** leaves your code alone. **Undo revision** restores the text from before the last accepted proposal. There is no code execution feature.

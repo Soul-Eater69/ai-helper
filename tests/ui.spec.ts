@@ -256,3 +256,30 @@ test('speech triggers answers without Generate and handles clarification replies
   expect(JSON.stringify(state.request.history)).toContain('How many exits');
   expect(state.request.recentSpeech).toEqual(['A parking lot for cars']);
 });
+
+test('the review panel says what changed, and can jump between changes', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Try a sample session' }).click();
+  await expect(page.getByRole('button', { name: 'Accept changes' })).toBeEnabled();
+
+  // A green/red gutter alone does not say what happened. The summary has to name the
+  // size of the change and where it is, without the reader hunting for it.
+  const summary = page.getByTestId('diff-summary');
+  await expect(summary).toBeVisible();
+  await expect(summary).not.toHaveText(/Comparing/);
+  await expect(summary).toHaveText(/\+\d+/);
+  await expect(summary).toHaveText(/line/i);
+
+  // Where there is more than one changed region, it must be reachable.
+  const next = page.getByRole('button', { name: 'Next change' });
+  if (await next.isVisible()) {
+    const counter = page.locator('.diff-nav span');
+    const before = await counter.textContent();
+    await next.click();
+    await expect(counter).not.toHaveText(before ?? '');
+  }
+  await page.screenshot({ path: 'test-results/diff-summary.png', fullPage: true });
+  expect(errors).toEqual([]);
+});

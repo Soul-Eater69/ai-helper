@@ -151,6 +151,9 @@ export class TranscriptionService {
           acknowledged = true;
           settled = true;
           this.ready = true;
+          // A confirmed session clears the budget, so blips spread across a long
+          // sitting cannot exhaust it cumulatively and kill listening mid-interview.
+          this.retries = 0;
           clearTimeout(timeout);
           this.pendingReject = undefined;
           this.emit({ type: 'audio.status', status: 'ready' });

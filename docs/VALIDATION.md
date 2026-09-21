@@ -28,3 +28,234 @@ Changed the new-install default to `gpt-4o-mini-transcribe` for the existing ser
 ## Automatic conversational responses
 
 Replaced keyword question detection with a model decision (`answer`, `wait`, `ignore`). Deterministic tests cover fragment accumulation, retained spoken context, automatic short replies, ignored speech, invalid decisions and cancellation on new speech or stop. A browser integration test emits transcripts and verifies automatic answers plus clarification context without clicking Generate. Its model decisions are mocked. Live decision accuracy, speaker ambiguity and end-to-end latency still require actual audio and API access.
+
+## Mid-answer interruptions
+
+The speech router decides whether transcribed speech deserves a response. It does not
+decide what an approved utterance means for an answer already streaming, so that case is
+classified separately: a correction rewrites the open turn, a short question about the
+answer is treated as a detour and the interrupted answer resumes from its prefix
+afterwards, and anything else opens a new turn with the interrupted one marked.
+
+Resuming is deliberately available only for a detour. Continuing an answer whose premise
+the interviewer has just withdrawn would keep writing something already rejected.
+
+A request now records the turn it renders into, separate from its own id, so a resumed
+answer continues the entry it was cut off from instead of opening another.
+
+An earlier version of this branch also assembled utterances and filtered backchannel.
+Both are now handled by the speech router and were removed rather than merged, to avoid
+two turn-detection systems in the same file.
+
+The reconnect budget resets on a confirmed session; it was cleared only in `start()`, so
+three drops spread across a long sitting ended listening.
+
+43 unit tests, browser tests, strict type check, production build and Prettier pass.
+Classifier behaviour on real accented speech and live resume quality remain acceptance
+items in TESTING.md.
+
+## Spoken-register refinement
+
+- `splitAnswer` now derives the spoken transcript and the code proposal from one pass.
+  They were previously produced by two regexes that disagreed: a brute-force-then-optimal
+  answer proposed nothing and had _both_ blocks stripped from the transcript, which told
+  the user to look in a workspace the code had never reached. The last block tagged with
+  a programming language is the proposal; earlier blocks and untagged output fences stay
+  inline where they were said.
+- The prompt was rewritten for spoken delivery. Topic guidance is now conditional rather
+  than three unconditional personas concatenated on every turn, and explicit delivery
+  rules forbid headings, bold labels, nested lists and warm-up phrases.
+- The turn sent to the model is prose instead of `JSON.stringify(...)`. A model handed a
+  data structure answers like one; empty sections are omitted entirely.
+- 50 unit tests, 6 browser tests, strict type check, production build and Prettier pass.
+
+Not verified here: whether answers actually sound more natural from a live model, which
+needs a real key and a listener. Prompt-quality claims are unproven until item 9 in
+TESTING.md is run with audio.
+
+## Candidate persona as the system instruction
+
+The user's Amazon SDE interview persona is now the system instruction, stored verbatim in
+`src/shared/candidate-prompt.ts`. It replaces the previous hand-written topic guidance
+rather than stacking on top of it, since both covered delivery and would have contradicted
+each other.
+
+Three things are appended because the persona does not cover them and the app needs them:
+
+- Session framing. Questions are mixed and a topic change does not reset the session.
+- Rendering. Answers are shown as text and code goes to a separate editor, so no headings
+  or nested lists, and **the last fenced block is the workspace proposal**. Without this
+  the persona would still answer well while the editor received the wrong file.
+- Boundaries. Prompt-injection resistance, no invented experience, no execution tools.
+  Placed last so they are the most recent thing the model reads.
+
+The candidate's name is a setting, not source. `AGENTS.md` forbids committing personal
+details, and a blank name expands to "the candidate" so the opening sentence still reads
+correctly.
+
+The assembled instruction is roughly 4,500 tokens and is sent on every turn.
+
+60 unit tests, 6 browser tests, strict type check, production build and Prettier pass.
+
+Not verified here: whether answers actually follow the persona. That needs a live key and
+a listener, and is the acceptance item this repo has never been able to close in CI.
+
+## Story bank
+
+Behavioural experience moves from one free-text blob to structured stories with STAR
+parts, leadership-principle tags, keywords and failure/conflict flags.
+
+Selection is local, keyword-based and deterministic. It runs between the interviewer
+finishing and the answer starting, so a network round-trip or a second model call would
+be the wrong tool, and it keeps behaviour identical in tests and in an interview.
+
+Three things this buys that a blob could not:
+
+- Only the two closest stories are sent, instead of the whole bank on every turn.
+- A coding question sends no stories at all, so the bank stops appearing in DSA turns.
+- Stories already told this session are outranked, so RULE 5's "avoid repeating a story"
+  becomes enforceable. A story is only reused when nothing else genuinely fits, which is
+  correct: reusing the one failure story beats answering a failure question with a story
+  about something else.
+
+`refreshSettings` now parses the payload through the schema rather than trusting it. A
+settings object from an older vault has no `stories` key, and the renderer was assigning
+it straight into state, so selection crashed on undefined. Caught by two browser tests
+that stub settings directly; fixed in the hook rather than in the tests.
+
+77 unit tests, 6 browser tests, strict type check, production build and Prettier pass.
+
+Not verified here: whether selection picks the story a human would have picked. That
+needs real stories and a real interview.
+
+## Routing cost and latency
+
+The speech router ran on the answer model and received the full conversation history on
+every speech pause, to return one of three words. Measured mid-interview at 12 answered
+turns, one routing call carried about 15,075 input tokens; a 20-question interview with
+roughly three pauses each is about 900,000 tokens spent on routing, against roughly
+260,000 on the answers themselves.
+
+Three changes:
+
+- A dedicated `routerModel`, defaulting to a small model. If the account cannot use it,
+  the provider retries once on the answer model rather than letting listening fail. Only
+  a model rejection triggers that retry, so a rate limit does not silently spend a second
+  call on the expensive model.
+- The routing payload is the last exchange, not the interview. The tail of the last
+  answer is kept because a clarifying question sits at the end of it.
+- `max_output_tokens` 1000 to 16. It returns one enum value, and the old budget let a
+  reasoning model spend the whole allowance before emitting it.
+
+Measured result: about 1,075 input tokens per routing call, a 93% reduction, and on a
+small model rather than the frontier one.
+
+`speechRequestSchema` now caps the routing payload well below the answer payload, so the
+history cannot silently regrow into it. A test asserts routing stays under an eighth of
+the answer payload.
+
+88 unit tests, 6 browser tests, strict type check, production build and Prettier pass.
+
+Not verified here: the actual latency saved. That needs a live key; the token measurement
+above is arithmetic on real payload sizes, not a timing measurement.
+
+## Behavioural detection narrowed
+
+A coding question is full of behavioural vocabulary. "What happens if the lookup fails?"
+and "Convince me this is O(n)" were both classified as story requests, because a bare
+failure or conflict word was enough, and each put two unrelated stories into a DSA answer.
+
+Detection now requires experiential framing: a direct frame such as "have you ever", a
+second-person past-tense verb such as "a disagreement you had", or a narrative opener
+paired with an experiential object. "Describe a situation where..." qualifies; "describe
+a binary search tree" does not. The failure and conflict bonuses in scoring are also
+gated on that, since the bonus alone could drag a story into a technical answer.
+
+Nine technical phrasings and seven behavioural ones are pinned by tests.
+
+92 unit tests, 6 browser tests, strict type check, production build and Prettier pass.
+
+## DSA flow rewritten around the dry run
+
+The dry run moves before the code. It is the step that makes the optimal sound derived
+rather than recalled: walking a small example through the brute force is where the
+repeated work becomes visible, and the optimal is then built out of that observation.
+
+It produces two things deliberately: a compact trace in a fenced `text` block, which is
+what goes on the shared screen, and a spoken narration, which is what is said while
+writing it.
+
+`splitAnswer` had to change for that to be safe. A trace-only answer previously became
+the workspace proposal and replaced the working file, because the untagged fallback took
+the last fence whatever it held. Fences tagged `text`, `trace`, `output`, `console`,
+`table`, `diff` and similar are now never proposals, and the rendering rules tell the
+model the same thing so the persona and the parser agree.
+
+Coding is narrated in writing order rather than summarised afterwards: short beats, one
+per meaningful part, each sayable while that part is typed, explaining decisions rather
+than syntax. Follow-ups are expected mid-step, and being cut off resumes rather than
+restarting the walkthrough.
+
+A worked example of one exchange is included. Models reproduce a demonstrated shape far
+more reliably than an abstract description, and pacing is the thing most at risk here.
+
+The assembled instruction is now about 5,400 tokens, up from 4,500. It is byte-identical
+across turns and sits in `instructions`, so it should continue to hit the automatic
+prefix cache.
+
+104 unit tests, 6 browser tests, strict type check, production build and Prettier pass.
+
+Not verified here: whether the model actually follows this pacing. That needs a live key
+and a listener. Tests prove the instruction says these things, not that the output obeys
+them.
+
+## Making a code change legible
+
+The review tab rendered an inline Monaco diff and nothing else: no counts, no line
+numbers, no way to reach a change. Proposals replace the whole file, so a one-line edit
+and a rewrite looked identical and the reader had to hunt.
+
+`CodeDiff` now reports what changed through `onDidUpdateDiff`, which is the only correct
+hook since the diff is computed asynchronously. The panel shows added and removed counts
+and where the changes are, scrolls to the first one instead of the top of the file, and
+offers previous/next navigation when there is more than one region.
+
+The instructions were given a matching rule: when the interviewer asks for a change, say
+what moved and why before the code block. The diff shows where lines differ but never
+what the change was for, so that sentence is the only thing that explains it.
+
+Lists are now allowed in exactly two places, for a physical reason rather than a stylistic
+one: narrating code about to be typed, and the complexity and edge cases after it. In both
+the reader is typing and can only glance between keystrokes, and a paragraph cannot be
+glanced at. Everywhere else, including every behavioural answer, stays prose.
+
+Two things a passing test did not catch, found by looking at the screenshot: the summary
+read "line 1-22" for a range, and the sample answer still used a bold heading and a bullet
+list in a spoken answer, which the instructions now forbid. The sample is the first thing
+a new user sees, so it has to show what the product actually produces.
+
+107 unit tests, 7 browser tests, strict type check, production build and Prettier pass.
+
+## A wait that never resolved
+
+Reported from live use: saying "Solve two sum" logged the transcript, set the status to
+"Waiting for more", and then nothing happened at all.
+
+Two causes, both fixed.
+
+The router judged a short complete request incomplete. Its instructions now state that a
+brief request naming a known problem is complete and should be answered, because the
+assistant asks its own clarifying questions; brevity is not a reason to wait.
+
+More seriously, `wait` had no floor. `SpeechQueue.decide` returned without scheduling
+anything, so if no further speech arrived the pending utterance sat there for the rest of
+the session. The transcript kept scrolling, so it looked alive. The queue now re-asks once
+after `WAIT_FLOOR_MS` of silence with `speakerStopped` set, the router is told it may not
+answer `wait` in that case, and if it does anyway the utterance is answered rather than
+stalled a second time. New speech during the window cancels the forced decision and the
+re-ask carries the whole utterance, not just the tail.
+
+This failure was described in review before it was seen in use and was not fixed at the
+time.
+
+113 unit tests, 7 browser tests, strict type check, production build and Prettier pass.

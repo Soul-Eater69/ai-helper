@@ -13,7 +13,7 @@ it('sends a semantic question automatically, including short clarification repli
   );
   queue.final('Two exits.');
   await vi.advanceTimersByTimeAsync(1100);
-  expect(route).toHaveBeenCalledWith('Two exits.', []);
+  expect(route).toHaveBeenCalledWith('Two exits.', [], false);
   expect(answer).toHaveBeenCalledWith('Two exits.', []);
 });
 it('retains incomplete speech and combines it with the next fragment', async () => {
@@ -55,7 +55,7 @@ it('does not answer ignored speech and keeps it as conversational context', asyn
   queue.final('Okay.');
   await vi.advanceTimersByTimeAsync(1100);
   expect(answer).not.toHaveBeenCalled();
-  expect(route).toHaveBeenLastCalledWith('Okay.', ['I used a dictionary for this.']);
+  expect(route).toHaveBeenLastCalledWith('Okay.', ['I used a dictionary for this.'], false);
 });
 it('invalidates a pending decision when more speech starts or listening stops', async () => {
   vi.useFakeTimers();

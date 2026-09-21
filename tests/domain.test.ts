@@ -4,7 +4,7 @@ import {
   undoRevision,
   editDocument,
   createDocument,
-  extractProposal,
+  splitAnswer,
 } from '../src/shared/revision';
 import { TranscriptBuffer } from '../src/shared/transcript';
 import { buildInstructions } from '../src/shared/prompts';
@@ -26,14 +26,33 @@ describe('code review safety', () => {
     expect(undone.code).toBe('a\n\n');
     expect(undone.version).toBe(2);
   });
-  it('never proposes a partial or ambiguous code fence', () => {
-    expect(extractProposal('```python\nprint(1)', 0)).toBeNull();
-    expect(extractProposal('```python\na\n```\n```python\nb\n```', 0)).toBeNull();
-    expect(extractProposal('Explanation\n```python\nprint(1)\n```', 4)).toEqual({
+  it('never proposes an unterminated code fence', () => {
+    expect(splitAnswer('```python\nprint(1)', 0).proposal).toBeNull();
+    expect(splitAnswer('No code here at all.', 0).proposal).toBeNull();
+    expect(splitAnswer('Explanation\n```python\nprint(1)\n```', 4).proposal).toEqual({
       baseVersion: 4,
       code: 'print(1)',
       language: 'python',
     });
+  });
+  it('proposes the final block when the answer walks through an earlier one', () => {
+    // The guidance asks for a brute force before the real solution, so a two-block
+    // answer is expected. Previously this proposed nothing AND stripped both blocks
+    // from the transcript, losing the code entirely.
+    const answer = 'Brute force first:\n```python\nbrute()\n```\nBetter:\n```python\nfast()\n```';
+    const { spoken, proposal } = splitAnswer(answer, 2);
+    expect(proposal).toEqual({ baseVersion: 2, code: 'fast()', language: 'python' });
+    // The illustrative block stays where it was said; only the proposal leaves.
+    expect(spoken).toContain('brute()');
+    expect(spoken).not.toContain('fast()');
+    expect(spoken).toMatch(/code workspace/i);
+  });
+  it('never claims code is in the workspace when none was proposed', () => {
+    const answer = 'Just talking this through, no code yet.';
+    const { spoken, proposal } = splitAnswer(answer, 0);
+    expect(proposal).toBeNull();
+    expect(spoken).toBe(answer);
+    expect(spoken).not.toMatch(/workspace/i);
   });
 });
 
@@ -68,11 +87,63 @@ describe('input and prompt boundaries', () => {
     const text = buildInstructions(settings);
     expect(text).toMatch(/never invent/i);
     expect(text).toMatch(/STAR/);
-    expect(text).toMatch(/simple.*English/i);
+    expect(text).toMatch(/simple, natural, everyday English/i);
   });
   it('preserves one-at-a-time clarification and reviewable complete code in LLD', () => {
     const text = buildInstructions(settingsSchema.parse({}));
-    expect(text).toMatch(/one clarifying question/i);
-    expect(text).toMatch(/complete.*code/i);
+    expect(text).toMatch(/one meaningful clarifying question at a time/i);
+    expect(text).toMatch(/complete, runnable version/i);
+  });
+});
+
+describe('choosing which fence is the proposal', () => {
+  it('ignores an untagged output block in favour of the tagged code', () => {
+    const answer = 'Here it is:\n```python\nsolve()\n```\nWhich prints:\n```\n[1, 2]\n```';
+    const { proposal, spoken } = splitAnswer(answer, 0);
+    expect(proposal?.code).toBe('solve()');
+    // The sample output is part of the explanation and stays where it was said.
+    expect(spoken).toContain('[1, 2]');
+  });
+  it('falls back to an untagged block when the model omitted the language', () => {
+    const { proposal } = splitAnswer('```\ndef f():\n    pass\n```', 0);
+    expect(proposal?.code).toBe('def f():\n    pass');
+  });
+  it('skips an empty fence', () => {
+    expect(splitAnswer('```python\n\n```', 0).proposal).toBeNull();
+  });
+});
+
+describe('a dry-run trace is never mistaken for code', () => {
+  const trace = [
+    'Let me trace [2,7,11,15] with target 9.',
+    '',
+    '```text',
+    'i=0 j=1   2+7  = 9   -> hit',
+    'i=0 j=2   2+11 = 13  -> no',
+    '```',
+    '',
+    'Notice I keep re-scanning values I have already seen.',
+  ].join('\n');
+
+  it('leaves the editor alone when the answer is only a trace', () => {
+    // Without this the trace table would replace the working file.
+    const { proposal, spoken } = splitAnswer(trace, 3);
+    expect(proposal).toBeNull();
+    expect(spoken).toBe(trace);
+    expect(spoken).toContain('i=0 j=1');
+  });
+
+  it('proposes the real code when a trace and code appear together', () => {
+    const answer = `${trace}\n\n\`\`\`python\ndef two_sum(nums, t):\n    return []\n\`\`\``;
+    const { proposal, spoken } = splitAnswer(answer, 3);
+    expect(proposal?.code).toContain('def two_sum');
+    // The trace stays on screen; only the code leaves for the editor.
+    expect(spoken).toContain('i=0 j=1');
+    expect(spoken).not.toContain('def two_sum');
+  });
+
+  it('ignores the other read-only fence tags too', () => {
+    for (const tag of ['plaintext', 'output', 'console', 'table', 'diff'])
+      expect(splitAnswer(`\`\`\`${tag}\nsome rows\n\`\`\``, 0).proposal).toBeNull();
   });
 });

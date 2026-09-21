@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { KeyRound, ShieldCheck, SlidersHorizontal, X } from 'lucide-react';
 import { desktopAPI } from '../bridge';
 import type { Workspace } from '../hooks/useSession';
-import { settingsSchema } from '../../shared/contracts';
+import { leadershipPrinciples, settingsSchema, type ExperienceStory } from '../../shared/contracts';
 export default function SettingsDialog({ work, close }: { work: Workspace; close: () => void }) {
   const ref = useRef<HTMLDialogElement>(null);
   const [draft, setDraft] = useState(structuredClone(work.settings));
@@ -13,6 +13,11 @@ export default function SettingsDialog({ work, close }: { work: Workspace; close
   useEffect(() => {
     ref.current?.showModal();
   }, []);
+  const editStory = (index: number, patch: Partial<ExperienceStory>) =>
+    setDraft({
+      ...draft,
+      stories: draft.stories.map((item, i) => (i === index ? { ...item, ...patch } : item)),
+    });
   const save = async () => {
     setError('');
     setBusy(true);
@@ -109,6 +114,15 @@ export default function SettingsDialog({ work, close }: { work: Workspace; close
               />
             </div>
             <div>
+              <label htmlFor="router-model">Routing model</label>
+              <input
+                id="router-model"
+                value={draft.routerModel}
+                placeholder="Blank uses the answer model"
+                onChange={(e) => setDraft({ ...draft, routerModel: e.target.value })}
+              />
+            </div>
+            <div>
               <label htmlFor="transcription-model">Transcription model</label>
               <input
                 id="transcription-model"
@@ -118,12 +132,25 @@ export default function SettingsDialog({ work, close }: { work: Workspace; close
             </div>
           </div>
           <p className="field-help">
-            Use model IDs available to your API account. Changes to transcription apply the next
-            time you start listening.
+            The routing model only decides whether speech deserves an answer, so a small fast model
+            is enough. If your account cannot use it, the answer model is used instead. Use model
+            IDs available to your API account. Changes to transcription apply the next time you
+            start listening.
           </p>
         </section>
         <section>
           <h3>Sound like yourself</h3>
+          <label htmlFor="candidate-name">Your name</label>
+          <input
+            id="candidate-name"
+            value={draft.candidateName}
+            maxLength={120}
+            placeholder="Spoken as your own name when you introduce yourself"
+            onChange={(e) => setDraft({ ...draft, candidateName: e.target.value })}
+          />
+          <p className="field-help">
+            Stays on this device. Leave blank and the answers avoid using a name at all.
+          </p>
           <label htmlFor="style">Speaking style</label>
           <textarea
             id="style"
@@ -144,6 +171,128 @@ export default function SettingsDialog({ work, close }: { work: Workspace; close
           <p className="field-help">
             These facts are sent to OpenAI with your questions. Behavioral answers ask for missing
             facts instead of inventing a story.
+          </p>
+        </section>
+        <section>
+          <h3>Story bank</h3>
+          <p>
+            Behavioral answers use only what is here. Each question pulls the two closest stories,
+            and one already told is passed over when another fits.
+          </p>
+          {draft.stories.map((item, index) => (
+            <div className="story-card" key={item.id}>
+              <div className="story-head">
+                <input
+                  aria-label={`Story ${index + 1} title`}
+                  placeholder="Short title, e.g. Payments migration"
+                  value={item.title}
+                  maxLength={160}
+                  onChange={(e) => editStory(index, { title: e.target.value })}
+                />
+                <button
+                  aria-label={`Remove story ${index + 1}`}
+                  className="icon-button"
+                  onClick={() =>
+                    setDraft({ ...draft, stories: draft.stories.filter((_, i) => i !== index) })
+                  }
+                >
+                  <X size={16} />
+                </button>
+              </div>
+              <div className="story-flags">
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={item.isFailure}
+                    onChange={(e) => editStory(index, { isFailure: e.target.checked })}
+                  />
+                  <span>A genuine failure</span>
+                </label>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={item.isConflict}
+                    onChange={(e) => editStory(index, { isConflict: e.target.checked })}
+                  />
+                  <span>A disagreement</span>
+                </label>
+              </div>
+              <select
+                aria-label={`Leadership principles for story ${index + 1}`}
+                multiple
+                size={4}
+                value={item.principles}
+                onChange={(e) =>
+                  editStory(index, {
+                    principles: [...e.target.selectedOptions]
+                      .map((option) => option.value)
+                      .slice(0, 6) as ExperienceStory['principles'],
+                  })
+                }
+              >
+                {leadershipPrinciples.map((principle) => (
+                  <option key={principle} value={principle}>
+                    {principle}
+                  </option>
+                ))}
+              </select>
+              <input
+                aria-label={`Keywords for story ${index + 1}`}
+                placeholder="Words the question might use: latency, on-call, rollback"
+                value={item.keywords}
+                maxLength={400}
+                onChange={(e) => editStory(index, { keywords: e.target.value })}
+              />
+              {(
+                [
+                  ['situation', 'Situation - the context and the stakes'],
+                  ['task', 'Task - what you personally owned'],
+                  ['action', 'Action - the decisions you made, and why'],
+                  ['result', 'Result - measured outcomes only'],
+                  ['learning', 'Learning - what you would do differently'],
+                ] as const
+              ).map(([field, label]) => (
+                <textarea
+                  key={field}
+                  aria-label={`${field} for story ${index + 1}`}
+                  placeholder={label}
+                  rows={field === 'action' ? 4 : 2}
+                  value={item[field]}
+                  onChange={(e) => editStory(index, { [field]: e.target.value })}
+                />
+              ))}
+            </div>
+          ))}
+          <button
+            className="subtle"
+            disabled={draft.stories.length >= 20}
+            onClick={() =>
+              setDraft({
+                ...draft,
+                stories: [
+                  ...draft.stories,
+                  {
+                    id: crypto.randomUUID(),
+                    title: '',
+                    principles: [],
+                    keywords: '',
+                    situation: '',
+                    task: '',
+                    action: '',
+                    result: '',
+                    learning: '',
+                    isFailure: false,
+                    isConflict: false,
+                  },
+                ],
+              })
+            }
+          >
+            Add a story
+          </button>
+          <p className="field-help">
+            Aim for eight to ten, including two real failures and a disagreement. Keep them
+            accurate: a missing fact produces a question, never an invented story.
           </p>
         </section>
         <section>
