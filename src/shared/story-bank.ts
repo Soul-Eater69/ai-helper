@@ -13,22 +13,54 @@ import type { ExperienceStory } from './contracts';
  * which story it has already used in this session.
  */
 
-const BEHAVIOURAL_CUES = [
-  'tell me about a time',
-  'tell me about an occasion',
-  'describe a situation',
-  'describe a time',
+/**
+ * Openers that introduce a request, which only mean "tell me a story" when paired with
+ * something experiential. "Describe a situation where..." is behavioural; "describe a
+ * binary search tree" is not.
+ */
+const NARRATIVE_OPENERS = [
+  'tell me about',
+  'describe',
   'give me an example',
   'give an example',
+  'walk me through',
+  'talk to me about',
+];
+
+const EXPERIENCE_OBJECTS = [
+  'a time',
+  'an occasion',
+  'a situation',
+  'a project you',
+  'a system you',
+  'something you',
+  'an experience',
+  'a conflict',
+  'a disagreement',
+  'a failure',
+  'a mistake',
+  'when you',
+  'yourself',
+];
+
+/** Frames that are behavioural on their own, with no second half needed. */
+const DIRECT_FRAMES = [
   'a time when',
-  'how did you handle',
-  'how did you deal',
-  'walk me through a project',
-  'walk me through a time',
   'have you ever',
+  'did you ever',
   'when have you',
   'what did you do when',
+  'how did you handle',
+  'how did you deal',
+  'how have you',
 ];
+
+/**
+ * Second person plus a past-tense experiential verb. Catches "a disagreement you had"
+ * without catching "if the lookup fails".
+ */
+const PERSONAL_PAST =
+  /\byou\s+(?:ever\s+|once\s+)?(?:disagreed|failed|struggled|missed|made|pushed|argued|convinced|led|owned|shipped|broke|handled|dealt|had to)\b/;
 
 const FAILURE_CUES = [
   'fail',
@@ -104,12 +136,19 @@ function terms(text: string): string[] {
 const includesAny = (text: string, cues: readonly string[]): boolean =>
   cues.some((cue) => text.includes(cue));
 
-/** True when the question is asking for a story rather than for technical reasoning. */
+/**
+ * True when the question is asking for a story rather than for technical reasoning.
+ *
+ * A failure or conflict word alone is not enough. "What happens if the lookup fails?" and
+ * "Convince me this is O(n)" are coding questions, and treating them as behavioural put
+ * two unrelated stories into the answer. Those words now only steer *which* story is
+ * picked, once the question is established as asking for one.
+ */
 export function isBehaviouralQuestion(question: string): boolean {
   const text = question.toLowerCase();
-  if (includesAny(text, BEHAVIOURAL_CUES)) return true;
-  // "Tell me about a conflict you had" has no canonical cue but is plainly behavioural.
-  return includesAny(text, CONFLICT_CUES) || includesAny(text, FAILURE_CUES);
+  if (includesAny(text, DIRECT_FRAMES)) return true;
+  if (PERSONAL_PAST.test(text)) return true;
+  return includesAny(text, NARRATIVE_OPENERS) && includesAny(text, EXPERIENCE_OBJECTS);
 }
 
 export interface StoryScore {
@@ -123,7 +162,11 @@ export interface StoryScore {
  * Scores one story against a question. Weighted so that an explicitly tagged principle or
  * a title match beats an incidental word appearing somewhere in the body text.
  */
-export function scoreStory(question: string, story: ExperienceStory): StoryScore {
+export function scoreStory(
+  question: string,
+  story: ExperienceStory,
+  behavioural = isBehaviouralQuestion(question),
+): StoryScore {
   const asked = new Set(terms(question));
   const lower = question.toLowerCase();
   const reasons: string[] = [];
@@ -158,13 +201,17 @@ export function scoreStory(question: string, story: ExperienceStory): StoryScore
     reasons.push('details overlap the question');
   }
 
-  if (story.isFailure && includesAny(lower, FAILURE_CUES)) {
-    score += 5;
-    reasons.push('a genuine failure, which is what was asked for');
-  }
-  if (story.isConflict && includesAny(lower, CONFLICT_CUES)) {
-    score += 5;
-    reasons.push('a disagreement, which is what was asked for');
+  // Only once the question is asking for a story. "Convince me this is O(n)" contains a
+  // conflict word but is a coding question, and the bonus alone used to drag a story in.
+  if (behavioural) {
+    if (story.isFailure && includesAny(lower, FAILURE_CUES)) {
+      score += 5;
+      reasons.push('a genuine failure, which is what was asked for');
+    }
+    if (story.isConflict && includesAny(lower, CONFLICT_CUES)) {
+      score += 5;
+      reasons.push('a disagreement, which is what was asked for');
+    }
   }
 
   return { story, score: Number(score.toFixed(2)), reasons };
@@ -194,7 +241,7 @@ export function selectStories(
   const used = new Set(usedIds);
 
   const ranked = stories
-    .map((story) => scoreStory(question, story))
+    .map((story) => scoreStory(question, story, behavioural))
     .map((entry) =>
       // An already-told story is not forbidden, only outranked by a fresh one that fits.
       used.has(entry.story.id)

@@ -158,3 +158,19 @@ the answer payload.
 
 Not verified here: the actual latency saved. That needs a live key; the token measurement
 above is arithmetic on real payload sizes, not a timing measurement.
+
+## Behavioural detection narrowed
+
+A coding question is full of behavioural vocabulary. "What happens if the lookup fails?"
+and "Convince me this is O(n)" were both classified as story requests, because a bare
+failure or conflict word was enough, and each put two unrelated stories into a DSA answer.
+
+Detection now requires experiential framing: a direct frame such as "have you ever", a
+second-person past-tense verb such as "a disagreement you had", or a narrative opener
+paired with an experiential object. "Describe a situation where..." qualifies; "describe
+a binary search tree" does not. The failure and conflict bonuses in scoring are also
+gated on that, since the bonus alone could drag a story into a technical answer.
+
+Nine technical phrasings and seven behavioural ones are pinned by tests.
+
+92 unit tests, 6 browser tests, strict type check, production build and Prettier pass.

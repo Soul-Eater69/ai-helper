@@ -148,3 +148,47 @@ describe('stored data that predates the story bank', () => {
     expect(selectStories('Tell me about a failure', [])).toEqual([]);
   });
 });
+
+describe('technical questions that contain behavioural vocabulary', () => {
+  // A coding question is full of words like "fail", "handle" and "convince". Treating
+  // any of them as a story request put unrelated experience into a DSA answer.
+  const technical = [
+    'Solve two sum and explain the trade-offs',
+    'Implement an LRU cache',
+    'What is the time complexity of your approach?',
+    'What happens if the lookup fails?',
+    'Convince me this is O(n)',
+    'How would you handle a failure in the middle of the loop?',
+    'Describe a binary search tree',
+    'Tell me about a hash map',
+    'Walk me through your approach',
+  ];
+
+  it('are not classified as behavioural', () => {
+    for (const q of technical) expect([q, isBehaviouralQuestion(q)]).toEqual([q, false]);
+  });
+
+  it('receive no stories at all', () => {
+    for (const q of technical) expect([q, selectStories(q, bank).length]).toEqual([q, 0]);
+  });
+});
+
+describe('behavioural phrasings that do not use the canonical opener', () => {
+  const behavioural = [
+    'Tell me about a time you disagreed with someone',
+    'Tell me about a disagreement you had',
+    'Give me an example of when you took ownership',
+    'Describe a situation where you missed a deadline',
+    'Walk me through a project you owned',
+    'Have you ever shipped something that broke?',
+    'How did you handle a difficult stakeholder?',
+  ];
+
+  it('are recognised', () => {
+    for (const q of behavioural) expect([q, isBehaviouralQuestion(q)]).toEqual([q, true]);
+  });
+
+  it('always receive something to work from', () => {
+    for (const q of behavioural) expect(selectStories(q, bank).length).toBeGreaterThan(0);
+  });
+});
