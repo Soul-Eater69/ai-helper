@@ -10,7 +10,7 @@ A Windows desktop workspace for technical interview practice and meetings where 
 - **LLD:** clarify one requirement at a time, summarize scope, derive entities, implement, and cover edge cases.
 - **DSA:** explain the approach and complexity, write readable code, and work through follow-ups.
 - **Amazon behavioral:** shape supplied experience into natural STAR + learning answers. Missing experience triggers a question, not an invented achievement.
-- **Continuous audio:** explicitly capture system playback (including Zoom) or a microphone; stream transcripts and detect questions after a pause.
+- **Continuous audio:** explicitly capture system playback (including Zoom) or a microphone; stream transcripts and interpret conversational turns after a pause.
 - **Reviewable code:** line numbers, syntax highlighting, inline additions/deletions, accept/reject, and undo. Editing while a proposal is generated makes that proposal stale and unapplyable.
 - **Personal prompts:** edit speaking style, real experience facts, and topic-specific guidance that applies automatically in Settings.
 - **Local control:** your own API key; OS-encrypted settings and optional session history. No raw audio is retained.
@@ -43,7 +43,7 @@ For development, use `npm run dev`. Renderer edits reload automatically; restart
 
 System audio captures **all playback on the computer**, not only Zoom or an individual speaker. Use headphones to avoid feedback and stop other playback. This app does not join Zoom, bypass meeting controls, identify speakers, or modify the interview's external editor. Its integrated editor is the source of truth for code proposals; paste external changes into it before requesting a revision.
 
-Transcription uses English settings. Detection is a conservative local heuristic, not perfect semantic recognition. For multi-part questions, disable automatic answers in Settings, review/edit the transcript in the question box, then send. Reconnect notices identify periods where audio is dropped; repeat the question after recovery. A change of transcription model requires restarting listening.
+Transcription uses English settings. With **Respond to conversation automatically** enabled (the default), a model reads each paused turn and conversation context to decide whether to answer, wait for more speech, or ignore it. Questions, corrections and short answers to clarifying questions can trigger a response without clicking Generate. Incomplete turns are carried forward; new speech invalidates pending decisions. Recent spoken context and the current response help distinguish follow-ups from acknowledgements or reading an answer aloud. This adds a model request per interpreted turn, so latency and API usage depend on the selected answer model. This is text-based turn interpretation, not speaker identification or the ChatGPT Voice engine; ambiguous speech can still be misclassified. Reconnect notices identify periods where audio is dropped; repeat the question after recovery. A change of transcription model requires restarting listening.
 
 ### Transcription startup errors
 

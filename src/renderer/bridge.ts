@@ -36,6 +36,10 @@ export const demoAPI: DesktopAPI = {
   cancel: async () => {
     generation++;
   },
+  routeSpeech: async () => {
+    throw new Error('Live conversational listening requires the desktop app.');
+  },
+  cancelSpeech: async () => undefined,
   startAudio: async () => {
     throw new Error('Live audio is available in the Windows desktop app.');
   },

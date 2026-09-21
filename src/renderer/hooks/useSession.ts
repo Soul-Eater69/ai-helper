@@ -14,7 +14,7 @@ import {
   type Settings,
   type SavedSession,
 } from '../../shared/contracts';
-import { shouldAnswer } from '../../shared/transcript';
+import { SpeechQueue } from '../speech-queue';
 import { buildHistory } from '../../shared/history';
 import { SessionSaver } from '../session-saver';
 import { AudioCapture } from '../audio/capture';
@@ -42,6 +42,7 @@ export function useSession() {
   const [notice, setNotice] = useState('');
   const [transcript, setTranscript] = useState<{ id: string; text: string }[]>([]);
   const [partial, setPartial] = useState('');
+  const [speechStatus, setSpeechStatus] = useState('');
   const [audioStatus, setAudioStatus] = useState('stopped');
   const [level, setLevel] = useState(0);
   const [sessions, setSessions] = useState<SavedSession[]>([]);
@@ -57,8 +58,7 @@ export function useSession() {
   );
   const active = useRef<{ id: string; version: number; code: string } | null>(null);
   const audio = useRef<AudioCapture | null>(null);
-  const answerTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  const pendingSpeech = useRef('');
+  const speechQueue = useRef<SpeechQueue | null>(null);
   const current = useRef({ settings, context, doc, turns, demo });
   current.current = { settings, context, doc, turns, demo };
   const api = () => (current.current.demo ? demoAPI : desktopAPI);
@@ -76,6 +76,8 @@ export function useSession() {
     void refreshSettings();
   }, [refreshSettings]);
   const stopAnswer = useCallback(async () => {
+    speechQueue.current?.stop();
+    void desktopAPI.cancelSpeech();
     const previous = active.current;
     active.current = null;
     setBusy(false);
@@ -85,51 +87,80 @@ export function useSession() {
       );
     await api().cancel();
   }, []);
-  const ask = useCallback(async (text: string, overrides?: { demo?: boolean }) => {
-    if (!text.trim()) return;
-    const state = current.current;
-    const useDemo = overrides?.demo ?? state.demo;
-    if (!useDemo && !desktopAPI.isDesktop) {
-      setError('Open the Windows app for live answers, or try the sample session.');
-      return;
-    }
-    const id = crypto.randomUUID();
-    if (active.current) {
-      const old = active.current.id;
-      setTurns((items) => items.map((t) => (t.id === old ? { ...t, status: 'cancelled' } : t)));
-    }
-    active.current = { id, version: state.doc.version, code: state.doc.code };
-    setBusy(true);
-    setError('');
-    setNotice('');
-    setSelected(id);
-    setTurns((items) => [
-      ...(items.length >= 30 ? [items[0], ...items.slice(-28)] : items),
-      { id, question: text.trim(), answer: '', status: 'streaming' as const },
-    ]);
-    const history = buildHistory(state.turns);
-    try {
-      await (useDemo ? demoAPI : desktopAPI).answer({
-        id,
-        question: text,
-        context: state.context,
-        code: state.doc.code,
-        codeVersion: state.doc.version,
-        language: state.settings.language,
-        history,
-      });
-    } catch (e) {
-      if (active.current?.id === id) {
-        setBusy(false);
-        active.current = null;
-        setError(message(e));
-        setTurns((items) => items.map((t) => (t.id === id ? { ...t, status: 'error' } : t)));
+  const ask = useCallback(
+    async (
+      text: string,
+      overrides?: { demo?: boolean; speech?: boolean; recentSpeech?: string[] },
+    ) => {
+      if (!text.trim()) return;
+      if (!overrides?.speech) {
+        speechQueue.current?.stop();
+        void desktopAPI.cancelSpeech();
       }
-    }
-  }, []);
+      const state = current.current;
+      const useDemo = overrides?.demo ?? state.demo;
+      if (!useDemo && !desktopAPI.isDesktop) {
+        setError('Open the Windows app for live answers, or try the sample session.');
+        return;
+      }
+      const id = crypto.randomUUID();
+      if (active.current) {
+        const old = active.current.id;
+        setTurns((items) => items.map((t) => (t.id === old ? { ...t, status: 'cancelled' } : t)));
+      }
+      active.current = { id, version: state.doc.version, code: state.doc.code };
+      setBusy(true);
+      setError('');
+      setNotice('');
+      setSelected(id);
+      setTurns((items) => [
+        ...(items.length >= 30 ? [items[0], ...items.slice(-28)] : items),
+        { id, question: text.trim(), answer: '', status: 'streaming' as const },
+      ]);
+      const history = buildHistory(state.turns);
+      try {
+        await (useDemo ? demoAPI : desktopAPI).answer({
+          id,
+          question: text,
+          context: state.context,
+          speechContext: overrides?.recentSpeech,
+          code: state.doc.code,
+          codeVersion: state.doc.version,
+          language: state.settings.language,
+          history,
+        });
+      } catch (e) {
+        if (active.current?.id === id) {
+          setBusy(false);
+          active.current = null;
+          setError(message(e));
+          setTurns((items) => items.map((t) => (t.id === id ? { ...t, status: 'error' } : t)));
+        }
+      }
+    },
+    [],
+  );
   const askRef = useRef(ask);
   askRef.current = ask;
   useEffect(() => {
+    speechQueue.current = new SpeechQueue(
+      (text, recentSpeech) => {
+        const state = current.current;
+        return desktopAPI.routeSpeech({
+          text,
+          recentSpeech,
+          context: state.context,
+          history: buildHistory(state.turns),
+          currentResponse: state.turns.at(-1)?.answer.slice(-6000) ?? '',
+        });
+      },
+      (text, recentSpeech) => {
+        setQuestion(text);
+        void askRef.current(text, { speech: true, recentSpeech });
+      },
+      setSpeechStatus,
+      (error) => setError(message(error)),
+    );
     const event = (event: AppEvent) => {
       if (event.type.startsWith('answer.')) {
         if (!('id' in event) || event.id !== active.current?.id) return;
@@ -151,6 +182,7 @@ export function useSession() {
           }
           active.current = null;
           setBusy(false);
+          setSpeechStatus('');
         }
         if (event.type === 'answer.error' || event.type === 'answer.cancelled') {
           if (event.type === 'answer.error') setError(event.message);
@@ -163,32 +195,27 @@ export function useSession() {
           );
           active.current = null;
           setBusy(false);
+          setSpeechStatus('');
         }
-      } else if (event.type === 'transcript.partial') setPartial(event.text);
-      else if (event.type === 'transcript.final') {
+      } else if (event.type === 'speech.started') {
+        if (current.current.settings.autoAnswer) speechQueue.current?.started(event.id);
+      } else if (event.type === 'speech.skipped') {
+        if (current.current.settings.autoAnswer) speechQueue.current?.final('', event.id);
+      } else if (event.type === 'transcript.partial') {
+        setPartial(event.text);
+        if (current.current.settings.autoAnswer) speechQueue.current?.partial();
+      } else if (event.type === 'transcript.final') {
         setPartial('');
         setTranscript((items) => [...items, { id: event.id, text: event.text }].slice(-100));
-        if (current.current.settings.autoAnswer) {
-          pendingSpeech.current = `${pendingSpeech.current} ${event.text}`.trim().slice(-20000);
-          clearTimeout(answerTimer.current);
-          answerTimer.current = setTimeout(() => {
-            const text = pendingSpeech.current;
-            pendingSpeech.current = '';
-            const last = current.current.turns.at(-1);
-            const awaiting = !!last && /\?\s*$/.test(last.answer.trim());
-            if (shouldAnswer(text, awaiting)) {
-              setQuestion(text);
-              void askRef.current(text);
-            }
-          }, 1100);
-        } else setQuestion((previous) => `${previous} ${event.text}`.trim().slice(-20000));
+        if (current.current.settings.autoAnswer) speechQueue.current?.final(event.text, event.id);
+        else setQuestion((previous) => `${previous} ${event.text}`.trim().slice(-20000));
       } else if (event.type === 'audio.status') {
         setAudioStatus(event.status);
         if (event.message)
           event.status === 'error' ? setError(event.message) : setNotice(event.message);
-        if (event.status === 'stopped' || event.status === 'error') {
-          clearTimeout(answerTimer.current);
-          pendingSpeech.current = '';
+        if (['stopped', 'error', 'reconnecting', 'connecting'].includes(event.status)) {
+          speechQueue.current?.stop();
+          void desktopAPI.cancelSpeech();
         }
         if (event.status === 'stopped' || event.status === 'error') void audio.current?.release();
       }
@@ -202,7 +229,8 @@ export function useSession() {
     return () => {
       removeDesktop();
       removeDemo();
-      clearTimeout(answerTimer.current);
+      speechQueue.current?.stop(true);
+      void desktopAPI.cancelSpeech();
       void audio.current?.stop();
     };
   }, []);
@@ -237,6 +265,12 @@ export function useSession() {
     window.addEventListener('beforeunload', flushOnClose);
     return () => window.removeEventListener('beforeunload', flushOnClose);
   }, []);
+  useEffect(() => {
+    if (!settings.autoAnswer) {
+      speechQueue.current?.stop();
+      void desktopAPI.cancelSpeech();
+    }
+  }, [settings.autoAnswer]);
   const reset = async () => {
     try {
       await saver.current.flush();
@@ -246,8 +280,8 @@ export function useSession() {
     }
     await stopAnswer();
     await audio.current?.stop();
-    clearTimeout(answerTimer.current);
-    pendingSpeech.current = '';
+    speechQueue.current?.stop(true);
+    void desktopAPI.cancelSpeech();
     sessionId.current = crypto.randomUUID();
     setContext('');
     setTurns([]);
@@ -314,6 +348,7 @@ export function useSession() {
     transcript,
     partial,
     audioStatus,
+    speechStatus,
     level,
     sessions,
     ask,
@@ -343,7 +378,11 @@ export function useSession() {
         setAudioStatus('stopped');
       }
     },
-    stopAudio: () => audio.current?.stop(),
+    stopAudio: () => {
+      speechQueue.current?.stop();
+      void desktopAPI.cancelSpeech();
+      return audio.current?.stop();
+    },
     deleteSession: async (id: string) => {
       await desktopAPI.deleteSession(id);
       setSessions(await desktopAPI.listSessions());

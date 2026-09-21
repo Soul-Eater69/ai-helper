@@ -5,10 +5,12 @@ import { z } from 'zod';
 import { RequestGate } from '../shared/request-gate';
 import { Vault } from './storage';
 import { AssistantService, openAIProvider } from './assistant';
+import { SpeechService } from './speech';
 import { TranscriptionService } from './transcription';
 import {
   settingsSchema,
   answerRequestSchema,
+  speechRequestSchema,
   savedSessionSchema,
   type AppEvent,
 } from '../shared/contracts';
@@ -19,6 +21,12 @@ let transcription: TranscriptionService;
 let captureGrant: { source: 'system' | 'microphone'; expires: number } | undefined;
 let startEpoch = 0;
 const answerGate = new RequestGate();
+const speechGate = new RequestGate();
+const speech = new SpeechService();
+const cancelSpeech = () => {
+  speechGate.cancel();
+  speech.cancel();
+};
 const dev = !app.isPackaged && process.env.AI_HELPER_DEV === '1';
 const entry = dev
   ? 'http://127.0.0.1:5173/'
@@ -76,6 +84,7 @@ async function boot(): Promise<void> {
   handle('settings:save', (input) => vault.saveSettings(settingsSchema.parse(input)));
   handle('key:set', (input) => vault.setKey(z.string().trim().min(10).max(500).parse(input)));
   handle('key:delete', async () => {
+    cancelSpeech();
     answerGate.cancel();
     assistant.cancel();
     transcription.stop();
@@ -93,9 +102,21 @@ async function boot(): Promise<void> {
     if (answerGate.isCurrent(ticket)) void assistant.answer(request, settings, key);
   });
   handle('answer:cancel', () => {
+    cancelSpeech();
     answerGate.cancel();
     assistant.cancel();
   });
+  handle('speech:route', async (input) => {
+    const request = speechRequestSchema.parse(input);
+    const ticket = speechGate.begin();
+    speech.cancel();
+    const key = await vault.key();
+    if (!key) throw new Error('Add your OpenAI API key in Settings first.');
+    const settings = await vault.settings();
+    if (!speechGate.isCurrent(ticket)) return { action: 'ignore' };
+    return speech.route(request, settings, key);
+  });
+  handle('speech:cancel', cancelSpeech);
   handle('audio:start', async (input) => {
     const source = z.enum(['system', 'microphone']).parse(input);
     const epoch = ++startEpoch;
@@ -108,6 +129,7 @@ async function boot(): Promise<void> {
     captureGrant = { source, expires: Date.now() + 30000 };
   });
   handle('audio:stop', () => {
+    cancelSpeech();
     startEpoch++;
     captureGrant = undefined;
     transcription.stop();
@@ -174,12 +196,14 @@ async function boot(): Promise<void> {
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   window.webContents.on('will-navigate', (event) => event.preventDefault());
   window.webContents.on('render-process-gone', () => {
+    cancelSpeech();
     answerGate.cancel();
     startEpoch++;
     assistant.cancel();
     transcription.stop();
   });
   window.on('closed', () => {
+    cancelSpeech();
     answerGate.cancel();
     startEpoch++;
     assistant.cancel();

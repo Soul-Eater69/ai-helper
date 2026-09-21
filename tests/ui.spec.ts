@@ -87,9 +87,13 @@ test('mixed follow-ups preserve context, pending revisions and accepted code', a
         },
         onEvent: (callback: (event: unknown) => void) => {
           callbacks.push(callback);
-          return () => {};
+          return () => {
+            const index = callbacks.indexOf(callback);
+            if (index >= 0) callbacks.splice(index, 1);
+          };
         },
         cancel: async () => {},
+        cancelSpeech: async () => {},
         stopAudio: async () => {},
         answer: async (request: Record<string, unknown>) => {
           requests.push(request);
@@ -141,4 +145,114 @@ test('mixed follow-ups preserve context, pending revisions and accepted code', a
   expect(JSON.stringify(requests[2].history)).toContain('Implement a parking lot');
   expect(JSON.stringify(requests[2].history)).toContain('Tell me about a disagreement');
   await expect(page.getByRole('region', { name: 'Code workspace' })).toBeVisible();
+});
+
+test('speech triggers answers without Generate and handles clarification replies', async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    const callbacks: ((event: unknown) => void)[] = [];
+    const routed: Record<string, unknown>[] = [];
+    const answered: Record<string, unknown>[] = [];
+    Object.assign(window, {
+      speechTest: {
+        routed,
+        answered,
+        emit: (event: unknown) => callbacks.forEach((fn) => fn(event)),
+      },
+      desktop: {
+        isDesktop: true,
+        getSettings: async () => ({
+          hasKey: true,
+          settings: {
+            model: 'test',
+            transcriptionModel: 'test',
+            language: 'python',
+            style: '',
+            profile: '',
+            prompts: { lld: '', dsa: '', behavioral: '' },
+            autoAnswer: true,
+            saveHistory: false,
+          },
+        }),
+        listSessions: async () => [],
+        cancel: async () => {},
+        cancelSpeech: async () => {},
+        stopAudio: async () => {},
+        onEvent: (callback: (event: unknown) => void) => {
+          callbacks.push(callback);
+          return () => {
+            const index = callbacks.indexOf(callback);
+            if (index >= 0) callbacks.splice(index, 1);
+          };
+        },
+        routeSpeech: async (request: Record<string, unknown>) => {
+          routed.push(request);
+          return {
+            action:
+              request.text === 'Just a second'
+                ? 'wait'
+                : request.text === 'Thanks'
+                  ? 'ignore'
+                  : 'answer',
+          };
+        },
+        answer: async (request: Record<string, unknown>) => {
+          answered.push(request);
+          setTimeout(
+            () =>
+              callbacks.forEach((fn) =>
+                fn({
+                  type: 'answer.done',
+                  id: request.id,
+                  text:
+                    answered.length === 1
+                      ? 'How many exits should we support?'
+                      : 'Okay, we will support two exits.',
+                }),
+              ),
+            10,
+          );
+        },
+      },
+    });
+  });
+  await page.goto('/');
+  await expect(page.getByText('API key saved')).toBeVisible();
+  const emit = (text: string) =>
+    page.evaluate((text) => {
+      (window as unknown as { speechTest: { emit: (event: unknown) => void } }).speechTest.emit({
+        type: 'transcript.final',
+        id: crypto.randomUUID(),
+        text,
+      });
+    }, text);
+  await emit('A parking lot for cars');
+  await expect(page.getByText('How many exits should we support?', { exact: true })).toBeVisible();
+  await emit('Two exits');
+  await expect(page.getByText('Okay, we will support two exits.', { exact: true })).toBeVisible();
+  await emit('Thanks');
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () => (window as unknown as { speechTest: { routed: unknown[] } }).speechTest.routed.length,
+      ),
+    )
+    .toBe(3);
+  const state = await page.evaluate(() => {
+    const state = (
+      window as unknown as {
+        speechTest: { routed: Record<string, unknown>[]; answered: unknown[] };
+      }
+    ).speechTest;
+    return {
+      request: state.routed[1],
+      answers: state.answered.length,
+      answerRequest: state.answered[1],
+    };
+  });
+  expect(state.answers).toBe(2);
+  expect(state.answerRequest).toMatchObject({ speechContext: ['A parking lot for cars'] });
+  expect(JSON.stringify(state.request.history)).toContain('How many exits');
+  expect(state.request.recentSpeech).toEqual(['A parking lot for cars']);
 });

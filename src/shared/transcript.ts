@@ -32,13 +32,3 @@ export class TranscriptBuffer {
     return ready;
   }
 }
-export function shouldAnswer(text: string, awaitingClarification: boolean): boolean {
-  const clean = text.trim();
-  if (!clean || /^(um|uh|hmm|thanks|thank you|okay|ok|yeah)[.!\s]*$/i.test(clean)) return false;
-  return (
-    awaitingClarification ||
-    /\?|\b(what|why|how|when|where|which|who|design|implement|write|explain|tell me|walk me|change|modify|instead|optimi[sz]e|return|find|solve|could you|can you|would you)\b/i.test(
-      clean,
-    )
-  );
-}

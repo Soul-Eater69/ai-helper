@@ -155,6 +155,11 @@ export class TranscriptionService {
           this.pendingReject = undefined;
           this.emit({ type: 'audio.status', status: 'ready' });
           resolve();
+        } else if (
+          event.type === 'input_audio_buffer.speech_started' &&
+          typeof event.item_id === 'string'
+        ) {
+          this.emit({ type: 'speech.started', id: event.item_id });
         } else if (event.type === 'error') {
           if (!acknowledged) {
             fail(providerError(event.error));
@@ -190,6 +195,8 @@ export class TranscriptionService {
         ) {
           partial.delete(event.item_id);
           const text = typeof event.transcript === 'string' ? event.transcript.slice(0, 20000) : '';
+          if (event.type.endsWith('.failed') || !text.trim())
+            this.emit({ type: 'speech.skipped', id: event.item_id });
           for (const item of buffer.finish(event.item_id, text))
             this.emit({ type: 'transcript.final', ...item });
           if (event.type.endsWith('.failed'))
