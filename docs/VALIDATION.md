@@ -4,7 +4,7 @@
 
 - TypeScript strict type check passed.
 - 39 domain/service/lifecycle/context/transcription/speech tests passed.
-- Eight browser workflow tests passed: visible insertion/deletion diffs and accept/undo, unified workspace, sidebar collapse and prompt settings, refusal of stale proposals after manual edits, desktop layout overflow, and cross-topic follow-ups preserving pinned context, request history, pending revisions and accepted code. The cross-topic test uses a mocked desktop provider; actual model interpretation of mixed questions remains a live acceptance check.
+- Nine browser workflow tests passed: visible insertion/deletion diffs and accept/undo, unified workspace, sidebar collapse and prompt settings, refusal of stale proposals after manual edits, desktop layout overflow, and cross-topic follow-ups preserving pinned context, request history, pending revisions and accepted code. The cross-topic test uses a mocked desktop provider; actual model interpretation of mixed questions remains a live acceptance check.
 - Production renderer/main/preload build passed.
 - Source formatted with Prettier.
 - Independent read-only code review completed. Its three substantive findings were fixed: cancellation before asynchronous request admission; release of local audio on terminal stops; and flushing the outgoing session's history snapshot.
@@ -36,3 +36,9 @@ Browser regression tests cover three successive implementations, both with and w
 ## Bounded speech waiting and visible changes
 
 A wait decision now schedules one final interpretation after another 1.5 seconds of silence; the final provider schema allows answer or ignore only. New speech and pause cancel the pending recheck. Tests verify that answering resumes without another utterance. The code diff shows changed-region position and inserted/deleted line counts, with previous/next navigation.
+
+## Adaptive DSA practice
+
+Prompt version 2.1.0 adds context-based pacing, one-at-a-time material clarification, natural candidate speech, justified optimization, manual traces, code review and interruption handling. Practice tools expose explain/dry-run/review/optimize actions without mode selection. The added browser test verifies pending-proposal and manually edited code baselines, retained question/clarification context, draft preservation, disabled controls during generation, and hiding actions on historical turns. The test failed on the missing controls before implementation and passed afterwards.
+
+This is instruction-driven model behavior. No live provider evaluation was run for this change, and the automated test uses mocked provider responses. Real-model acceptance scenarios are in `docs/DSA-PRACTICE.md`; actual pacing and algorithm quality remain unverified. Code feedback is manual model analysis on request, not sandbox execution or continuous keystroke review.

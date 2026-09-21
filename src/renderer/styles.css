@@ -1113,3 +1113,34 @@ svg {
   min-height: 0;
   position: relative;
 }
+
+.practice-tools {
+  flex-shrink: 0;
+  padding: 0 10px 4px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.practice-tools summary {
+  cursor: pointer;
+  width: fit-content;
+  padding: 6px 0;
+}
+.practice-tools p {
+  margin: 4px 0 10px;
+  font-size: 11px;
+}
+.practice-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.practice-actions button {
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 7px 11px;
+  font-size: 12px;
+  background: #fafafa;
+}
+.practice-actions button:hover:not(:disabled) {
+  background: #eeeeee;
+}

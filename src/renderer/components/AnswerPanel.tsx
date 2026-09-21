@@ -2,6 +2,7 @@ import { useState } from 'react';
 import Markdown from 'react-markdown';
 import { ArrowUpRight, Check, Copy, MessageSquare, Sparkles, Square } from 'lucide-react';
 import type { Workspace } from '../hooks/useSession';
+import PracticeTools from './PracticeTools';
 export default function AnswerPanel({
   work,
   openSettings,
@@ -91,6 +92,7 @@ export default function AnswerPanel({
           </>
         )}
       </div>
+      <PracticeTools work={work} />
       <form
         className="composer"
         onSubmit={(event) => {

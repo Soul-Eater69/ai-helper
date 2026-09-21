@@ -101,3 +101,9 @@ npm run build
 - This release is a single-user app. It does not implement organization accounts, SSO, managed billing, centralized audit logs, or a signed auto-update service.
 
 See [SECURITY.md](SECURITY.md) and [validation instructions](docs/TESTING.md).
+
+## DSA practice
+
+DSA guidance adapts to confirmed constraints, short replies, interruptions and direct requests. It asks one material clarification at a time, explains brute force and optimization, pauses before implementation unless coding is already requested, and supports manual dry runs, edge-case review and follow-up changes. Ask “how should I explain that?” for natural candidate wording.
+
+Open **Practice tools** below the latest response for **Explain approach**, **Dry run**, **Review code** and **Optimize**. These use the latest code and conversation without overwriting your typed draft. Reviews do not execute code or request automatic changes; ask to implement a fix when ready. Model pacing is instruction-driven, not a deterministic stage machine. See [DSA practice and live acceptance scenarios](docs/DSA-PRACTICE.md).
