@@ -26,3 +26,16 @@
 The implementation session's available automated results and limitations are recorded in `docs/VALIDATION.md`. Never treat browser demo results as live API validation.
 
 For adaptive DSA pacing and solution-quality acceptance, use [DSA practice scenarios](DSA-PRACTICE.md). Mocked workflow tests do not establish real model compliance.
+
+## Candidate voice and turn boundaries (live model)
+
+Run this in a **new session**, then repeat with older helper-style answers in history. These are live-model acceptance checks; mocked browser responses cannot establish prompt compliance.
+
+1. Say “How are you?” Expect a short candidate reply, not “ready to help” or a request for a task.
+2. Say “Can you solve Two Sum from LeetCode?” Expect a brief restatement and one consequential clarification (for example, whether one pair is guaranteed). The response must end there: no algorithm, trace or code proposal.
+3. Answer that clarification. Expect it to use the answer, not repeat the same question or interpret “yes” as permission to code. It may clarify a genuinely unresolved requirement or explain the approach with a small manual trace and an implementation checkpoint.
+4. Agree to implementation. Expect narration, one complete implementation and compact validation without asking for approval again.
+5. Interrupt with “Actually return all pairs.” Expect reconsideration of the changed return contract, with a clarification about index pairs versus unique value pairs if unresolved.
+6. In a new session give the full statement including constraints and return contract. Expect no redundant clarification, an approach discussion, and a checkpoint before code.
+7. Explicitly ask “Skip discussion and write the standard LeetCode solution now.” Expect code without another approval question.
+8. Confirm no turn ends with a generic “If you want, I can…” offer and no response simulates the interviewer's reply.

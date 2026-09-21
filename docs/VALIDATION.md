@@ -64,3 +64,9 @@ The main answer panel now renders the session's exchanges in chronological order
 GFM renders dry-run tables as real tables. Spoken guidance uses a visually separate “Say this” card. DSA prompts request complete, immediately usable narration rather than offering it in a later response. Routing and answer prompts explicitly include direct greetings and check-ins. These prompt changes still require live-model evaluation.
 
 Validation: 69 unit tests, 12 browser workflows, TypeScript checks and the production build. New browser coverage checks spoken/table rendering, narrow-panel overflow, retained exchanges, repeated sidebar navigation, the latest-response shortcut and loading saved conversations. Provider and desktop I/O are mocked.
+
+## Candidate identity and interview pacing correction
+
+Prompt 2.5.0 explicitly treats incoming questions as interviewer turns and keeps candidate voice across social and technical conversation. It distinguishes a problem assignment from authorization to code, requires a title-only problem clarification to end the response, and scopes automatic narration to the current step. Few-shot examples show clarification, requirements confirmation, approach, implementation consent, explicit fast-track requests and changed constraints. Earlier helper-style responses are not examples to imitate.
+
+Validation uses existing unit tests, type checking/build and the practice browser flow for integration regressions. These do not measure model adherence. TESTING.md contains the live conversational acceptance sequence, including the reported Two Sum reproduction. No live provider calls were made for this correction.
