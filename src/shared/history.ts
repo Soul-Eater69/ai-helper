@@ -1,3 +1,4 @@
+import type { SpeechRequest } from './contracts';
 /** Keep the opening question and newest complete turns inside a bounded provider payload. */
 export function buildHistory(
   turns: readonly { question: string; answer: string; status: string }[],
@@ -18,4 +19,20 @@ export function buildHistory(
     remaining -= size;
   }
   return [opening, ...recent];
+}
+
+/** Bound old routing context, preserving the current utterance and the last clarification. */
+export function compactSpeechRequest(request: SpeechRequest): SpeechRequest {
+  return {
+    ...request,
+    recentSpeech: request.recentSpeech.slice(-6).map((text) => text.slice(-600)),
+    history: request.history.slice(-2).map((message) => ({
+      ...message,
+      content:
+        message.role === 'assistant'
+          ? message.content.slice(-1200)
+          : message.content.slice(0, 1200),
+    })),
+    currentResponse: request.currentResponse.slice(-1200),
+  };
 }

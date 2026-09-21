@@ -26,9 +26,9 @@ describe('code review safety', () => {
     expect(undone.code).toBe('a\n\n');
     expect(undone.version).toBe(2);
   });
-  it('never proposes a partial or ambiguous code fence', () => {
+  it('rejects partial code and selects the final complete source block', () => {
     expect(extractProposal('```python\nprint(1)', 0)).toBeNull();
-    expect(extractProposal('```python\na\n```\n```python\nb\n```', 0)).toBeNull();
+    expect(extractProposal('```python\na\n```\n```python\nb\n```', 0)?.code).toBe('b');
     expect(extractProposal('Explanation\n```python\nprint(1)\n```', 4)).toEqual({
       baseVersion: 4,
       code: 'print(1)',

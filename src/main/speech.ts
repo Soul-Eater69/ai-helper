@@ -20,11 +20,16 @@ export type SpeechProvider = (
   key: string,
   signal: AbortSignal,
 ) => Promise<SpeechDecision>;
-export const openAISpeechProvider: SpeechProvider = async (request, settings, key, signal) => {
+async function requestDecision(
+  model: string,
+  request: SpeechRequest,
+  key: string,
+  signal: AbortSignal,
+): Promise<SpeechDecision> {
   const client = new OpenAI({ apiKey: key, maxRetries: 0, timeout: 20000 });
   const response = await client.responses.create(
     {
-      model: settings.model,
+      model,
       store: false,
       instructions: SPEECH_INSTRUCTIONS,
       input: JSON.stringify(request),
@@ -52,6 +57,24 @@ export const openAISpeechProvider: SpeechProvider = async (request, settings, ke
   );
   if (response.status !== 'completed') throw new Error('Incomplete speech decision');
   return speechDecisionSchema.parse(JSON.parse(response.output_text));
+}
+function isModelRejected(error: unknown): boolean {
+  const value = error as { status?: number; code?: string; message?: string };
+  return (
+    (value?.status === 400 || value?.status === 404) &&
+    /model_not_found|model.*does not exist|model.*not found|unsupported model/i.test(
+      `${value.code ?? ''} ${value.message ?? ''}`,
+    )
+  );
+}
+export const openAISpeechProvider: SpeechProvider = async (request, settings, key, signal) => {
+  const preferred = settings.routerModel.trim() || settings.model;
+  try {
+    return await requestDecision(preferred, request, key, signal);
+  } catch (error) {
+    if (signal.aborted || preferred === settings.model || !isModelRejected(error)) throw error;
+    return requestDecision(settings.model, request, key, signal);
+  }
 };
 export class SpeechService {
   private active?: AbortController;

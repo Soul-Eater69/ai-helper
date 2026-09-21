@@ -1,3 +1,4 @@
+import { splitAnswer } from '../../shared/revision';
 import { useState } from 'react';
 import Markdown from 'react-markdown';
 import { ArrowUpRight, Check, Copy, MessageSquare, Sparkles, Square } from 'lucide-react';
@@ -12,11 +13,7 @@ export default function AnswerPanel({
 }) {
   const [copied, setCopied] = useState(false);
   const turn = work.turns.find((t) => t.id === work.selected) ?? work.turns.at(-1);
-  const text =
-    turn?.answer.replace(
-      /^```(?:python|java|typescript|javascript|cpp|c\+\+)[^\n]*\n[\s\S]*?^```\s*$/gm,
-      '\n*Code is available in the workspace for review.*\n',
-    ) ?? '';
+  const text = turn?.status === 'done' ? splitAnswer(turn.answer, 0).spoken : (turn?.answer ?? '');
   return (
     <section className="answer-panel" aria-label="Answer workspace">
       <div className={`answer-scroll ${turn ? '' : 'is-empty'}`}>

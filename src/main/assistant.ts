@@ -1,3 +1,4 @@
+import { isBehaviouralQuestion, selectStories, renderStory } from '../shared/story-bank';
 import OpenAI from 'openai';
 import { buildInstructions } from '../shared/prompts';
 import type { AppEvent, AnswerRequest, Settings } from '../shared/contracts';
@@ -19,6 +20,36 @@ export function friendlyError(error: unknown): string {
     return 'OpenAI rejected the request. Check your model settings and try a shorter question.';
   return 'The request could not finish. Check your connection and model access, then retry. Your code is unchanged.';
 }
+/** Resolve stored facts in main; short follow-ups reuse the nearest behavioral question. */
+export function composeAnswerContext(request: AnswerRequest, settings: Settings) {
+  let storyQuestion = request.question;
+  const isFollowUp = (text: string) =>
+    /^(?:and |okay[, ]+|so )?(?:how did|why did|what did|what happened|what was|what were|who |tell me more|go deeper|explain that|can you elaborate)/i.test(
+      text.trim(),
+    );
+  if (!isBehaviouralQuestion(storyQuestion) && isFollowUp(storyQuestion)) {
+    for (const turn of [...request.history].reverse()) {
+      if (turn.role !== 'user') continue;
+      if (isBehaviouralQuestion(turn.content)) {
+        storyQuestion = turn.content;
+        break;
+      }
+      if (!isFollowUp(turn.content)) break;
+    }
+  }
+  return {
+    question: request.question,
+    pinnedContext: request.context,
+    recentSpokenContext: request.speechContext ?? [],
+    language: request.language,
+    currentCode: request.code,
+    codeSource: request.codeSource ?? 'working',
+    experienceFacts: settings.profile,
+    relevantExperiences: selectStories(storyQuestion, settings.stories).map((entry) =>
+      renderStory(entry.story),
+    ),
+  };
+}
 export const openAIProvider: StreamProvider = async function* (request, settings, key, signal) {
   const client = new OpenAI({ apiKey: key, maxRetries: 1, timeout: 60000 });
   const stream = await client.responses.create(
@@ -32,15 +63,7 @@ export const openAIProvider: StreamProvider = async function* (request, settings
         ...request.history,
         {
           role: 'user',
-          content: JSON.stringify({
-            question: request.question,
-            pinnedContext: request.context,
-            recentSpokenContext: request.speechContext ?? [],
-            language: request.language,
-            currentCode: request.code,
-            codeSource: request.codeSource ?? 'working',
-            experienceFacts: settings.profile,
-          }),
+          content: JSON.stringify(composeAnswerContext(request, settings)),
         },
       ],
     },

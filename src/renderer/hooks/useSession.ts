@@ -15,7 +15,7 @@ import {
   type SavedSession,
 } from '../../shared/contracts';
 import { SpeechQueue } from '../speech-queue';
-import { buildHistory } from '../../shared/history';
+import { buildHistory, compactSpeechRequest } from '../../shared/history';
 import { SessionSaver } from '../session-saver';
 import { AudioCapture } from '../audio/capture';
 export interface Turn {
@@ -71,7 +71,7 @@ export function useSession() {
   const refreshSettings = useCallback(async () => {
     try {
       const result = await desktopAPI.getSettings();
-      setSettings(result.settings);
+      setSettings(settingsSchema.parse(result.settings));
       setHasKey(result.hasKey);
       setSessions(await desktopAPI.listSessions());
     } catch (e) {
@@ -156,14 +156,16 @@ export function useSession() {
     speechQueue.current = new SpeechQueue(
       (text, recentSpeech, finalize) => {
         const state = current.current;
-        return desktopAPI.routeSpeech({
-          text,
-          recentSpeech,
-          finalize,
-          context: state.context,
-          history: buildHistory(state.turns),
-          currentResponse: state.turns.at(-1)?.answer.slice(-6000) ?? '',
-        });
+        return desktopAPI.routeSpeech(
+          compactSpeechRequest({
+            text,
+            recentSpeech,
+            finalize,
+            context: state.context,
+            history: buildHistory(state.turns),
+            currentResponse: state.turns.at(-1)?.answer.slice(-6000) ?? '',
+          }),
+        );
       },
       (text, recentSpeech) => {
         setQuestion(text);
