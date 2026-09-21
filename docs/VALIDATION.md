@@ -235,3 +235,27 @@ list in a spoken answer, which the instructions now forbid. The sample is the fi
 a new user sees, so it has to show what the product actually produces.
 
 107 unit tests, 7 browser tests, strict type check, production build and Prettier pass.
+
+## A wait that never resolved
+
+Reported from live use: saying "Solve two sum" logged the transcript, set the status to
+"Waiting for more", and then nothing happened at all.
+
+Two causes, both fixed.
+
+The router judged a short complete request incomplete. Its instructions now state that a
+brief request naming a known problem is complete and should be answered, because the
+assistant asks its own clarifying questions; brevity is not a reason to wait.
+
+More seriously, `wait` had no floor. `SpeechQueue.decide` returned without scheduling
+anything, so if no further speech arrived the pending utterance sat there for the rest of
+the session. The transcript kept scrolling, so it looked alive. The queue now re-asks once
+after `WAIT_FLOOR_MS` of silence with `speakerStopped` set, the router is told it may not
+answer `wait` in that case, and if it does anyway the utterance is answered rather than
+stalled a second time. New speech during the window cancels the forced decision and the
+re-ask carries the whole utterance, not just the tail.
+
+This failure was described in review before it was seen in use and was not fixed at the
+time.
+
+113 unit tests, 7 browser tests, strict type check, production build and Prettier pass.

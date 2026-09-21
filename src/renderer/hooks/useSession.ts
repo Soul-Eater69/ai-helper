@@ -215,11 +215,12 @@ export function useSession() {
   askRef.current = ask;
   useEffect(() => {
     speechQueue.current = new SpeechQueue(
-      (text, recentSpeech) => {
+      (text, recentSpeech, speakerStopped) => {
         const state = current.current;
         return desktopAPI.routeSpeech({
           text,
           recentSpeech,
+          speakerStopped,
           context: state.context,
           history: buildRouterHistory(state.turns),
           currentResponse: state.turns.at(-1)?.answer.slice(-1200) ?? '',

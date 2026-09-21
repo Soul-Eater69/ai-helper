@@ -64,3 +64,18 @@ describe('which model routes', () => {
     expect(routerModel(settings)).toBe('gpt-5.4');
   });
 });
+
+describe('the routing instructions', () => {
+  it('treat a short named problem as complete, not as something to wait on', async () => {
+    const { SPEECH_INSTRUCTIONS } = await import('../src/main/speech');
+    // "Solve two sum" was being held as incomplete, so nothing was ever answered.
+    expect(SPEECH_INSTRUCTIONS).toMatch(/brevity is not a reason to wait/i);
+    expect(SPEECH_INSTRUCTIONS).toMatch(/Solve two sum/);
+  });
+
+  it('forbid waiting once the speaker has stopped', async () => {
+    const { SPEECH_INSTRUCTIONS } = await import('../src/main/speech');
+    expect(SPEECH_INSTRUCTIONS).toMatch(/if speakerStopped is true/i);
+    expect(SPEECH_INSTRUCTIONS).toMatch(/do not return wait in that case/i);
+  });
+});

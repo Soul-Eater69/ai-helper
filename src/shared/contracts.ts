@@ -136,6 +136,8 @@ export const speechRequestSchema = answerRequestSchema
     text: z.string().trim().min(1).max(4000),
     recentSpeech: z.array(z.string().max(600)).max(6),
     currentResponse: z.string().max(1200),
+    /** True on the re-ask after silence: the speaker has finished, so `wait` is not an option. */
+    speakerStopped: z.boolean().optional(),
     history: z
       .array(z.object({ role: z.enum(['user', 'assistant']), content: z.string().max(1200) }))
       .max(4),
