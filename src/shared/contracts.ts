@@ -3,6 +3,54 @@ import { z } from 'zod';
 export const modeSchema = z.enum(['lld', 'dsa', 'behavioral']);
 export type Mode = z.infer<typeof modeSchema>;
 export const languages = ['python', 'java', 'typescript', 'cpp'] as const;
+/** The sixteen principles, used to tag stories and to steer selection. */
+export const leadershipPrinciples = [
+  'Customer Obsession',
+  'Ownership',
+  'Invent and Simplify',
+  'Are Right, A Lot',
+  'Learn and Be Curious',
+  'Hire and Develop the Best',
+  'Insist on the Highest Standards',
+  'Think Big',
+  'Bias for Action',
+  'Frugality',
+  'Earn Trust',
+  'Dive Deep',
+  'Have Backbone; Disagree and Commit',
+  'Deliver Results',
+  "Strive to Be Earth's Best Employer",
+  'Success and Scale Bring Broad Responsibility',
+] as const;
+export type LeadershipPrinciple = (typeof leadershipPrinciples)[number];
+
+/**
+ * One real experience, stored in STAR parts rather than as prose.
+ *
+ * Structure is what makes selection possible: a free-text profile has to be sent whole
+ * on every turn, which dilutes the answer and costs tokens on questions that are not
+ * behavioural at all.
+ */
+export const storySchema = z
+  .object({
+    id: z.string().min(1).max(100),
+    title: z.string().trim().max(160),
+    principles: z.array(z.enum(leadershipPrinciples)).max(6).default([]),
+    /** Extra terms to match on, for vocabulary the STAR text does not contain. */
+    keywords: z.string().max(400).default(''),
+    situation: z.string().max(4000).default(''),
+    task: z.string().max(2000).default(''),
+    action: z.string().max(6000).default(''),
+    result: z.string().max(3000).default(''),
+    learning: z.string().max(2000).default(''),
+    /** A genuine failure, so it can be offered when one is asked for. */
+    isFailure: z.boolean().default(false),
+    /** A disagreement handled professionally. */
+    isConflict: z.boolean().default(false),
+  })
+  .strict();
+export type ExperienceStory = z.infer<typeof storySchema>;
+
 export const settingsSchema = z
   .object({
     model: z
@@ -29,6 +77,7 @@ export const settingsSchema = z
         'Use simple, natural spoken English. Be concise and confident. Explain decisions without sounding scripted. Use occasional conversational transitions, not filler in every sentence.',
       ),
     profile: z.string().max(20000).default(''),
+    stories: z.array(storySchema).max(20).default([]),
     prompts: z
       .object({
         lld: z.string().max(8000).default(''),
@@ -47,6 +96,8 @@ export const answerRequestSchema = z
     question: z.string().trim().min(1).max(20000),
     context: z.string().max(12000).default(''),
     speechContext: z.array(z.string().max(1600)).max(12).optional(),
+    /** Stories chosen for this turn. Ids only; the text is resolved in main. */
+    storyIds: z.array(z.string().max(100)).max(4).optional(),
     code: z.string().max(100000),
     codeVersion: z.number().int().nonnegative(),
     language: z.enum(languages),

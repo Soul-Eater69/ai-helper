@@ -1071,3 +1071,42 @@ svg {
     animation: none !important;
   }
 }
+
+/* Story bank editor */
+.story-card {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  margin-bottom: 12px;
+  border: 1px solid var(--line, #232c3b);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.02);
+}
+.story-head {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.story-head input {
+  flex: 1;
+  font-weight: 600;
+}
+.story-flags {
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+.story-flags label {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  font-size: 13px;
+  margin: 0;
+}
+.story-flags input {
+  width: auto;
+  margin: 0;
+}
+.story-card select[multiple] {
+  min-height: 92px;
+}

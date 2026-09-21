@@ -1,5 +1,6 @@
 import OpenAI from 'openai';
 import { buildInstructions } from '../shared/prompts';
+import { renderStory } from '../shared/story-bank';
 import type { AppEvent, AnswerRequest, Settings } from '../shared/contracts';
 export type ProviderEvent = { type: 'delta'; text: string } | { type: 'complete' };
 export type StreamProvider = (
@@ -38,10 +39,22 @@ export function composeTurn(request: AnswerRequest, settings: Settings): string 
   if (request.context.trim())
     parts.push(`Things established earlier in this interview:\n${request.context.trim()}`);
 
-  if (settings.profile.trim())
+  // Only the stories chosen for this question are sent. Shipping the whole bank every
+  // turn diluted the answer and cost tokens on questions that were not behavioural.
+  const chosen = (request.storyIds ?? [])
+    .map((id) => settings.stories.find((story) => story.id === id))
+    .filter((story): story is (typeof settings.stories)[number] => Boolean(story))
+    .map(renderStory);
+
+  if (chosen.length || settings.profile.trim()) {
+    const sections = [
+      settings.profile.trim() ? `General background:\n${settings.profile.trim()}` : '',
+      chosen.length ? `Relevant experiences you can draw on:\n\n${chosen.join('\n\n')}` : '',
+    ].filter(Boolean);
     parts.push(
-      `Your own background, which is the only experience you may draw on:\n${settings.profile.trim()}`,
+      `${sections.join('\n\n')}\n\nThis is the only experience you may use. If what you need is not here, ask for it instead of inventing it.`,
     );
+  }
 
   if (request.code.trim())
     parts.push(

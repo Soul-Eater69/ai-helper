@@ -39,13 +39,42 @@ describe('the turn handed to the model reads like speech, not a record', () => {
     expect(text).toMatch(/this is the truth/i);
   });
 
-  it('marks the profile as the only experience that may be used', () => {
+  it('marks the supplied background as the only experience that may be used', () => {
     const text = composeTurn(
       request(),
       settingsSchema.parse({ profile: 'Led a migration at Acme.' }),
     );
     expect(text).toContain('Led a migration at Acme.');
-    expect(text).toMatch(/only experience you may draw on/i);
+    expect(text).toMatch(/only experience you may use/i);
+    expect(text).toMatch(/ask for it instead of inventing it/i);
+  });
+
+  it('includes only the stories this turn selected, not the whole bank', () => {
+    const settings = settingsSchema.parse({
+      stories: [
+        { id: 'a', title: 'Payments migration', action: 'I added the missing index.' },
+        { id: 'b', title: 'Cache disagreement', action: 'I argued for the simpler cache.' },
+      ],
+    });
+    const text = composeTurn(request({ storyIds: ['a'] }), settings);
+    expect(text).toContain('Payments migration');
+    expect(text).toContain('I added the missing index.');
+    expect(text).not.toContain('Cache disagreement');
+  });
+
+  it('says nothing about experience when no story was selected', () => {
+    const settings = settingsSchema.parse({
+      stories: [{ id: 'a', title: 'Payments migration', action: 'x' }],
+    });
+    // A coding turn selects nothing, so the bank never reaches the model.
+    const text = composeTurn(request({ storyIds: [] }), settings);
+    expect(text).not.toMatch(/experience/i);
+    expect(text).not.toContain('Payments migration');
+  });
+
+  it('ignores a story id that no longer exists', () => {
+    const settings = settingsSchema.parse({ stories: [] });
+    expect(() => composeTurn(request({ storyIds: ['gone'] }), settings)).not.toThrow();
   });
 });
 

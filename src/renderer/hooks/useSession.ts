@@ -17,6 +17,7 @@ import {
 import { SpeechQueue } from '../speech-queue';
 import { buildHistory } from '../../shared/history';
 import { buildResumePrompt, classifyInterruption } from '../../shared/turn-taking';
+import { selectStories } from '../../shared/story-bank';
 import { SessionSaver } from '../session-saver';
 import { AudioCapture } from '../audio/capture';
 export interface Turn {
@@ -72,6 +73,8 @@ export function useSession() {
   } | null>(null);
   /** Set while a detour is answered, so the interrupted answer can resume after it. */
   const pendingResume = useRef<{ turnId: string; question: string; prefix: string } | null>(null);
+  /** Stories already told this session, so later rounds reach for a different one. */
+  const usedStories = useRef<string[]>([]);
   const audio = useRef<AudioCapture | null>(null);
   const speechQueue = useRef<SpeechQueue | null>(null);
   const current = useRef({ settings, context, doc, turns, demo });
@@ -80,7 +83,9 @@ export function useSession() {
   const refreshSettings = useCallback(async () => {
     try {
       const result = await desktopAPI.getSettings();
-      setSettings(result.settings);
+      // Parsed rather than trusted: a payload from an older vault, or from a build that
+      // predates a field, must not reach the rest of the hook missing its defaults.
+      setSettings(settingsSchema.parse(result.settings));
       setHasKey(result.hasKey);
       setSessions(await desktopAPI.listSessions());
     } catch (e) {
@@ -174,12 +179,21 @@ export function useSession() {
         ];
       });
       const history = buildHistory(state.turns);
+      // Resuming continues an answer whose stories were already chosen; re-selecting
+      // against the continuation prompt would swap the story mid-sentence.
+      const picked = resume
+        ? []
+        : selectStories(text, state.settings.stories, { usedIds: usedStories.current });
+      const storyIds = picked.map((entry) => entry.story.id);
+      if (storyIds.length)
+        usedStories.current = [...new Set([...usedStories.current, ...storyIds])].slice(-20);
       try {
         await (useDemo ? demoAPI : desktopAPI).answer({
           id,
           question: resume ? buildResumePrompt(resume.question, resume.prefix) : text,
           context: state.context,
           speechContext: overrides?.recentSpeech,
+          storyIds,
           code: state.doc.code,
           codeVersion: state.doc.version,
           language: state.settings.language,
@@ -374,6 +388,7 @@ export function useSession() {
     await audio.current?.stop();
     speechQueue.current?.stop(true);
     void desktopAPI.cancelSpeech();
+    usedStories.current = [];
     sessionId.current = crypto.randomUUID();
     setContext('');
     setTurns([]);

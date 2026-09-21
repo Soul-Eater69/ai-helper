@@ -99,3 +99,31 @@ The assembled instruction is roughly 4,500 tokens and is sent on every turn.
 
 Not verified here: whether answers actually follow the persona. That needs a live key and
 a listener, and is the acceptance item this repo has never been able to close in CI.
+
+## Story bank
+
+Behavioural experience moves from one free-text blob to structured stories with STAR
+parts, leadership-principle tags, keywords and failure/conflict flags.
+
+Selection is local, keyword-based and deterministic. It runs between the interviewer
+finishing and the answer starting, so a network round-trip or a second model call would
+be the wrong tool, and it keeps behaviour identical in tests and in an interview.
+
+Three things this buys that a blob could not:
+
+- Only the two closest stories are sent, instead of the whole bank on every turn.
+- A coding question sends no stories at all, so the bank stops appearing in DSA turns.
+- Stories already told this session are outranked, so RULE 5's "avoid repeating a story"
+  becomes enforceable. A story is only reused when nothing else genuinely fits, which is
+  correct: reusing the one failure story beats answering a failure question with a story
+  about something else.
+
+`refreshSettings` now parses the payload through the schema rather than trusting it. A
+settings object from an older vault has no `stories` key, and the renderer was assigning
+it straight into state, so selection crashed on undefined. Caught by two browser tests
+that stub settings directly; fixed in the hook rather than in the tests.
+
+77 unit tests, 6 browser tests, strict type check, production build and Prettier pass.
+
+Not verified here: whether selection picks the story a human would have picked. That
+needs real stories and a real interview.
