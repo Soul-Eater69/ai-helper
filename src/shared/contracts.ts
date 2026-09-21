@@ -44,6 +44,7 @@ export const answerRequestSchema = z
     id: z.string().min(1).max(100),
     question: z.string().trim().min(1).max(20000),
     context: z.string().max(12000).default(''),
+    speechContext: z.array(z.string().max(1600)).max(12).optional(),
     code: z.string().max(100000),
     codeVersion: z.number().int().nonnegative(),
     language: z.enum(languages),
@@ -57,6 +58,19 @@ export const answerRequestSchema = z
   })
   .strict();
 export type AnswerRequest = z.infer<typeof answerRequestSchema>;
+export const speechRequestSchema = answerRequestSchema
+  .pick({ context: true, history: true })
+  .extend({
+    text: z.string().trim().min(1).max(20000),
+    recentSpeech: z.array(z.string().max(1600)).max(12),
+    currentResponse: z.string().max(6000),
+  })
+  .strict();
+export type SpeechRequest = z.infer<typeof speechRequestSchema>;
+export const speechDecisionSchema = z
+  .object({ action: z.enum(['answer', 'wait', 'ignore']) })
+  .strict();
+export type SpeechDecision = z.infer<typeof speechDecisionSchema>;
 export const savedSessionSchema = z.object({
   id: z.string().min(1).max(100),
   title: z.string().max(160),
@@ -81,6 +95,8 @@ export type AppEvent =
   | { type: 'answer.done'; id: string; text: string }
   | { type: 'answer.error'; id: string; message: string }
   | { type: 'answer.cancelled'; id: string }
+  | { type: 'speech.started'; id: string }
+  | { type: 'speech.skipped'; id: string }
   | { type: 'transcript.partial'; id: string; text: string }
   | { type: 'transcript.final'; id: string; text: string }
   | {
@@ -96,6 +112,8 @@ export interface DesktopAPI {
   deleteKey(): Promise<void>;
   answer(request: AnswerRequest): Promise<void>;
   cancel(): Promise<void>;
+  routeSpeech(request: SpeechRequest): Promise<SpeechDecision>;
+  cancelSpeech(): Promise<void>;
   startAudio(source: 'system' | 'microphone'): Promise<void>;
   stopAudio(): Promise<void>;
   sendAudio(data: ArrayBuffer): void;

@@ -233,7 +233,7 @@ export default function App() {
           <span>
             <Radio size={12} />
             {work.audioStatus === 'ready'
-              ? 'Listening'
+              ? work.speechStatus || 'Listening'
               : work.audioStatus === 'reconnecting'
                 ? 'Reconnecting · audio gap'
                 : work.audioStatus === 'connecting'

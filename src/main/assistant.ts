@@ -35,6 +35,7 @@ export const openAIProvider: StreamProvider = async function* (request, settings
           content: JSON.stringify({
             question: request.question,
             pinnedContext: request.context,
+            recentSpokenContext: request.speechContext ?? [],
             language: request.language,
             currentCode: request.code,
             experienceFacts: settings.profile,

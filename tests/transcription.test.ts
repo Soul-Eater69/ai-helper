@@ -66,3 +66,25 @@ it('starts only after configuration acknowledgement and stops cleanly', async ()
   expect(events).toContainEqual({ type: 'audio.status', status: 'ready' });
   service.stop();
 });
+it('releases successful empty transcription items after a speech start', async () => {
+  const events: unknown[] = [];
+  const service = new TranscriptionService((event) => events.push(event));
+  const starting = service.start('key', 'gpt-4o-mini-transcribe');
+  sockets[0].emit('message', JSON.stringify({ type: 'session.updated' }));
+  await starting;
+  sockets[0].emit(
+    'message',
+    JSON.stringify({ type: 'input_audio_buffer.speech_started', item_id: 'noise' }),
+  );
+  sockets[0].emit(
+    'message',
+    JSON.stringify({
+      type: 'conversation.item.input_audio_transcription.completed',
+      item_id: 'noise',
+      transcript: ' ',
+    }),
+  );
+  expect(events).toContainEqual({ type: 'speech.started', id: 'noise' });
+  expect(events).toContainEqual({ type: 'speech.skipped', id: 'noise' });
+  service.stop();
+});

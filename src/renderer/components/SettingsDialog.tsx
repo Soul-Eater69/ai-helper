@@ -177,9 +177,10 @@ export default function SettingsDialog({ work, close }: { work: Workspace; close
               onChange={(e) => setDraft({ ...draft, autoAnswer: e.target.checked })}
             />
             <span>
-              <strong>Answer detected questions automatically</strong>
+              <strong>Respond to conversation automatically</strong>
               <small>
-                Waits for a speech pause. Turn off to review transcripts before sending.
+                Uses the model to recognize questions, clarification replies and follow-ups after a
+                pause. Adds an API request per interpreted turn. Turn off for manual sending.
               </small>
             </span>
           </label>

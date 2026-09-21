@@ -6,7 +6,7 @@ import {
   createDocument,
   extractProposal,
 } from '../src/shared/revision';
-import { TranscriptBuffer, shouldAnswer } from '../src/shared/transcript';
+import { TranscriptBuffer } from '../src/shared/transcript';
 import { buildInstructions } from '../src/shared/prompts';
 import { settingsSchema, answerRequestSchema } from '../src/shared/contracts';
 
@@ -55,12 +55,6 @@ describe('transcript assembly', () => {
     buffer.commit('b', 'a');
     buffer.finish('b', 'next');
     expect(buffer.finish('a', '')).toEqual([{ id: 'b', text: 'next' }]);
-  });
-  it('only auto-answers actionable speech, including clarification replies', () => {
-    expect(shouldAnswer('um okay thank you', false)).toBe(false);
-    expect(shouldAnswer('Design a parking lot', false)).toBe(true);
-    expect(shouldAnswer('What if duplicates are allowed?', false)).toBe(true);
-    expect(shouldAnswer('Single level', true)).toBe(true);
   });
 });
 

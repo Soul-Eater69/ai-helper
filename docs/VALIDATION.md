@@ -3,8 +3,8 @@
 ## Verified in the implementation environment
 
 - TypeScript strict type check passed.
-- 28 domain/service/lifecycle/context/transcription tests passed.
-- Five browser workflow tests passed: visible insertion/deletion diffs and accept/undo, unified workspace, sidebar collapse and prompt settings, refusal of stale proposals after manual edits, desktop layout overflow, and cross-topic follow-ups preserving pinned context, request history, pending revisions and accepted code. The cross-topic test uses a mocked desktop provider; actual model interpretation of mixed questions remains a live acceptance check.
+- 37 domain/service/lifecycle/context/transcription/speech tests passed.
+- Six browser workflow tests passed: visible insertion/deletion diffs and accept/undo, unified workspace, sidebar collapse and prompt settings, refusal of stale proposals after manual edits, desktop layout overflow, and cross-topic follow-ups preserving pinned context, request history, pending revisions and accepted code. The cross-topic test uses a mocked desktop provider; actual model interpretation of mixed questions remains a live acceptance check.
 - Production renderer/main/preload build passed.
 - Source formatted with Prettier.
 - Independent read-only code review completed. Its three substantive findings were fixed: cancellation before asynchronous request admission; release of local audio on terminal stops; and flushing the outgoing session's history snapshot.
@@ -25,17 +25,31 @@ These are release acceptance items in TESTING.md. This is tested initial-release
 
 Changed the new-install default to `gpt-4o-mini-transcribe` for the existing server-VAD flow. Existing saved settings are retained and must be changed explicitly. Mock WebSocket tests cover configuration rejection, HTTP authentication rejection, network errors and acknowledgement before readiness. Provider diagnostics expose error codes and parameter names, not raw error messages. These tests do not establish live API connectivity or model access for a user account.
 
-## Continuous turn-taking — added after initial release
+## Automatic conversational responses
 
-- Utterance assembly and interruption routing added as pure, clock-injected logic in
-  `src/shared/turn-taking.ts`; 13 tests cover fragmented speech, the four interruption
-  classes, and the resume prompt.
-- Full suite after the change: 41 unit tests, 5 browser workflow tests, strict type check,
-  production build and Prettier all pass.
-- The reconnect budget now resets on a confirmed session, so intermittent drops across a
-  long sitting no longer exhaust it cumulatively.
+Replaced keyword question detection with a model decision (`answer`, `wait`, `ignore`). Deterministic tests cover fragment accumulation, retained spoken context, automatic short replies, ignored speech, invalid decisions and cancellation on new speech or stop. A browser integration test emits transcripts and verifies automatic answers plus clarification context without clicking Generate. Its model decisions are mocked. Live decision accuracy, speaker ambiguity and end-to-end latency still require actual audio and API access.
 
-Not verified here: how the classifier behaves on real accented speech, real interruption
-timing, and whether resumed answers read seamlessly from a live model. Those remain live
-acceptance items — items 3, 5 and 9 in TESTING.md now also cover backchannel, detour and
-correction handling.
+## Mid-answer interruptions
+
+The speech router decides whether transcribed speech deserves a response. It does not
+decide what an approved utterance means for an answer already streaming, so that case is
+classified separately: a correction rewrites the open turn, a short question about the
+answer is treated as a detour and the interrupted answer resumes from its prefix
+afterwards, and anything else opens a new turn with the interrupted one marked.
+
+Resuming is deliberately available only for a detour. Continuing an answer whose premise
+the interviewer has just withdrawn would keep writing something already rejected.
+
+A request now records the turn it renders into, separate from its own id, so a resumed
+answer continues the entry it was cut off from instead of opening another.
+
+An earlier version of this branch also assembled utterances and filtered backchannel.
+Both are now handled by the speech router and were removed rather than merged, to avoid
+two turn-detection systems in the same file.
+
+The reconnect budget resets on a confirmed session; it was cleared only in `start()`, so
+three drops spread across a long sitting ended listening.
+
+43 unit tests, browser tests, strict type check, production build and Prettier pass.
+Classifier behaviour on real accented speech and live resume quality remain acceptance
+items in TESTING.md.
