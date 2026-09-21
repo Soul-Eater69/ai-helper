@@ -104,7 +104,7 @@ See [SECURITY.md](SECURITY.md) and [validation instructions](docs/TESTING.md).
 
 ## DSA practice
 
-DSA guidance adapts to confirmed constraints, short replies, interruptions and direct requests. It asks one material clarification at a time, explains brute force and optimization, pauses before implementation unless coding is already requested, and supports manual dry runs, edge-case review and follow-up changes. Ask “how should I explain that?” for natural candidate wording.
+DSA guidance adapts to confirmed constraints, short replies, interruptions and direct requests. It asks one material clarification at a time, explains brute force and optimization, pauses before implementation unless coding is already requested, and supports manual dry runs, edge-case review and follow-up changes. Candidate wording is automatic: dry runs pair what to write with what to say, and coding includes narration cues in writing order. No coaching command or practice-button click is required.
 
 Open **Practice tools** below the latest response for **Explain approach**, **Dry run**, **Review code** and **Optimize**. These use the latest code and conversation without overwriting your typed draft. Reviews do not execute code or request automatic changes; ask to implement a fix when ready. Model pacing is instruction-driven, not a deterministic stage machine. See [DSA practice and live acceptance scenarios](docs/DSA-PRACTICE.md).
 

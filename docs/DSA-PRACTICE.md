@@ -2,9 +2,9 @@
 
 The session adapts from the conversation, pinned constraints and the latest code. No DSA mode or stage selection is needed. The default is one consequential clarification at a time, a concise approach discussion (brute force, bottleneck, improvement and trade-off), a useful example and an implementation checkpoint. Coding, manual tracing, edge cases and complexity follow when implementation is agreed. Direct requests can skip or revisit steps.
 
-The assistant drafts candidate speech. Ask “how should I explain that?” for a short **Say aloud** paragraph and a separate explanation of why it works. Ask for shorter or deeper answers at any time. Behavioral and design questions can interrupt an algorithm discussion without requiring a mode switch.
+The assistant drafts candidate speech. Spoken wording is supplied automatically. Each dry run pairs **Write / state** with **Say aloud**, and implementation includes short narration cues in writing order. No special coaching request or button click is required. Ask for shorter or deeper answers at any time. Behavioral and design questions can interrupt an algorithm discussion without requiring a mode switch.
 
-**Practice tools**, below the latest response, provides Explain approach, Dry run, Review code and Optimize. These send follow-ups using the existing conversation and latest valid proposal or manually edited working code. They preserve unfinished text in the composer. Code review/optimization require code; controls disable during generation. When viewing an earlier answer, return to the latest question to use the controls. The sample session uses fixed responses and does not expose these controls.
+**Practice tools** are optional shortcuts for revisiting a step. Below the latest response, the panel provides Explain approach, Dry run, Review code and Optimize. These send follow-ups using the existing conversation and latest valid proposal or manually edited working code. They preserve unfinished text in the composer. Code review/optimization require code; controls disable during generation. When viewing an earlier answer, return to the latest question to use the controls. The sample session uses fixed responses and does not expose these controls.
 
 A dry run or review does not ask for a code replacement. Optimization discusses a justified improvement first; reply “implement that” for a reviewable proposal. The assistant can explain why an algorithm is already optimal. Code changes remain subject to Accept/Reject and stale-version safeguards.
 
@@ -33,4 +33,4 @@ For spoken tests, enable automatic responses and speak the same turns. A brief �
 
 ## Limits
 
-Feedback uses a code snapshot when a request is sent; it does not monitor an external editor or review every keystroke. All traces and reviews are model reasoning, not executed tests. This release has no code execution sandbox. Long conversations have bounded history; pin important constraints and restate an earlier problem if needed. No guarantee of model accuracy, fixed latency or interview outcome is made.
+Automatic guidance and relevant feedback accompany conversational turns. Feedback uses a code snapshot when a request is sent; it does not monitor an external editor or review every keystroke. All traces and reviews are model reasoning, not executed tests. This release has no code execution sandbox. Long conversations have bounded history; pin important constraints and restate an earlier problem if needed. No guarantee of model accuracy, fixed latency or interview outcome is made.

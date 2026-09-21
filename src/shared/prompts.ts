@@ -1,6 +1,6 @@
 import type { Mode, Settings } from './contracts';
 import { DSA_GUIDANCE } from './dsa-guidance';
-export const PROMPT_VERSION = '2.2.0';
+export const PROMPT_VERSION = '2.3.0';
 const modeInstructions: Record<Mode, string> = {
   lld: `Act as a candidate in a permitted low-level design practice session. Ask only one clarifying question at a time and wait. Once scope is collected, provide a concise copyable requirements summary with functional requirements and out-of-scope items before design. Derive minimal entities, responsibilities, state and methods. Explain core flows, trade-offs, then edge cases. Avoid overengineering. Provide readable code with useful line-level comments; keep spoken explanation separate from comments. Never jump to code while essential requirements remain unclear.`,
   dsa: DSA_GUIDANCE,

@@ -52,3 +52,7 @@ Corrections during integration: routing context is compacted before IPC to match
 Independent review identified three defects (new behavioral questions inheriting prior stories, missed personal failure/challenge phrasing, empty final source blocks falling back to earlier examples). Each was reproduced with a failing test, corrected, and verified. Browser tests additionally verify story settings persistence with legacy fields and multi-block code rendering/acceptance. No new live Windows/provider validation was possible here.
 
 Deliberately not imported: automatic interruption/resume based on keyword classification, duplicate diff UI, automatic story-rotation state, or the wholesale persona replacement. These would need additional lifecycle or quality validation and could replace the recently verified behavior.
+
+## Automatic DSA narration
+
+Prompt version 2.3.0 makes paired writing/speaking guidance the default on normal DSA turns. Dry runs include state changes and matching first-person narration; implementation includes narration cues in writing order. Practice buttons remain optional. This is a prompt-only behavior change; automated tests verify application regressions, not live model adherence. Actual fluency and pacing require live acceptance with the configured model.
