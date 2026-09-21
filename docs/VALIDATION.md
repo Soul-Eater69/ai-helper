@@ -56,3 +56,11 @@ Deliberately not imported: automatic interruption/resume based on keyword classi
 ## Automatic DSA narration
 
 Prompt version 2.3.0 makes paired writing/speaking guidance the default on normal DSA turns. Dry runs include state changes and matching first-person narration; implementation includes narration cues in writing order. Practice buttons remain optional. This is a prompt-only behavior change; automated tests verify application regressions, not live model adherence. Actual fluency and pacing require live acceptance with the configured model.
+
+## Conversation and explanation display
+
+The main answer panel now renders the session's exchanges in chronological order, with sidebar navigation and a Latest response shortcut. Historical answers retain their code inline; the latest implementation remains in the code workspace. The existing session limit is unchanged: the opening exchange and 29 recent exchanges are retained. Cross-launch history requires “Remember sessions on this device” in Settings; unsaved past sessions cannot be recovered.
+
+GFM renders dry-run tables as real tables. Spoken guidance uses a visually separate “Say this” card. DSA prompts request complete, immediately usable narration rather than offering it in a later response. Routing and answer prompts explicitly include direct greetings and check-ins. These prompt changes still require live-model evaluation.
+
+Validation: 69 unit tests, 12 browser workflows, TypeScript checks and the production build. New browser coverage checks spoken/table rendering, narrow-panel overflow, retained exchanges, repeated sidebar navigation, the latest-response shortcut and loading saved conversations. Provider and desktop I/O are mocked.

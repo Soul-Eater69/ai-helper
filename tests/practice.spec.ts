@@ -66,7 +66,7 @@ test('practice actions preserve draft, conversation, pending code and manual edi
   await expect(page.getByRole('button', { name: 'Dry run', exact: true })).toBeEnabled();
   await expect(page.getByRole('button', { name: 'Accept changes' })).toBeEnabled();
   await page.getByRole('button', { name: 'Review code', exact: true }).click();
-  await expect(page.locator('.response-status')).toHaveText('Ready');
+  await expect(page.locator('.response-status').last()).toHaveText('Ready');
   const requests = await page.evaluate(
     () => (window as unknown as { practiceRequests: Record<string, unknown>[] }).practiceRequests,
   );
@@ -82,7 +82,7 @@ test('practice actions preserve draft, conversation, pending code and manual edi
   await page.keyboard.press('ControlOrMeta+A');
   await page.keyboard.insertText('def two_sum(nums, target):\n    return []');
   await page.getByRole('button', { name: 'Optimize', exact: true }).click();
-  await expect(page.locator('.response-status')).toHaveText('Ready');
+  await expect(page.locator('.response-status').last()).toHaveText('Ready');
   const last = await page.evaluate(() =>
     (window as unknown as { practiceRequests: Record<string, unknown>[] }).practiceRequests.at(-1),
   );

@@ -101,13 +101,24 @@ export default function App() {
           </details>
         )}
         <div className="sidebar-bottom">
-          <button className="sidebar-action" onClick={() => setHistoryOpen(!historyOpen)}>
+          <button
+            className="sidebar-action"
+            aria-expanded={historyOpen}
+            onClick={() => setHistoryOpen(!historyOpen)}
+          >
             <BrainCircuit size={17} /> Saved sessions <span>{work.sessions.length}</span>
           </button>
           {historyOpen && (
             <div className="saved-sessions">
-              {!work.sessions.length && (
-                <p>Enable session history in Settings to keep your work.</p>
+              {!work.settings.saveHistory && (
+                <p>
+                  Saving is off.{' '}
+                  <button onClick={() => setSettingsOpen(true)}>Enable in Settings</button> to keep
+                  conversations after closing the app.
+                </p>
+              )}
+              {work.settings.saveHistory && !work.sessions.length && (
+                <p>Your completed conversations will appear here automatically.</p>
               )}
               {work.sessions.map((session) => (
                 <div key={session.id}>

@@ -36,6 +36,7 @@ export function useSession() {
   const [proposalBaseSource, setProposalBaseSource] = useState<'working' | 'proposal'>('working');
   const [turns, setTurns] = useState<Turn[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
+  const [navigationRequest, setNavigationRequest] = useState(0);
   const [question, setQuestion] = useState('');
   const [busy, setBusy] = useState(false);
   const [demo, setDemo] = useState(false);
@@ -351,7 +352,11 @@ export function useSession() {
     proposalBaseSource,
     turns,
     selected,
-    setSelected,
+    navigationRequest,
+    setSelected: (id: string | null) => {
+      setSelected(id);
+      setNavigationRequest((value) => value + 1);
+    },
     question,
     setQuestion,
     busy,

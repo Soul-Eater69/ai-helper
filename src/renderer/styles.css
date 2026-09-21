@@ -1183,3 +1183,79 @@ svg {
 .story-card select[multiple] {
   min-height: 92px;
 }
+
+.conversation-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px;
+  border-bottom: 1px solid #eee;
+  font-size: 12px;
+  color: #777;
+}
+.conversation-turn + .conversation-turn {
+  border-top: 1px solid #e9e9ed;
+  margin-top: 36px;
+  padding-top: 32px;
+}
+.spoken-guidance {
+  background: #f3f6fb;
+  border: 1px solid #e2e9f3;
+  border-radius: 16px;
+  padding: 18px 20px;
+  margin: 16px 0 24px;
+  color: #253650;
+  line-height: 1.7;
+}
+.spoken-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #526988;
+  margin-bottom: 8px;
+}
+.spoken-guidance p:last-child {
+  margin-bottom: 0;
+}
+.answer-table {
+  max-width: 100%;
+  overflow-x: auto;
+  margin: 12px 0 24px;
+  border: 1px solid #e4e7ec;
+  border-radius: 12px;
+}
+.answer-table table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.answer-table th {
+  background: #f7f8fa;
+  color: #535b67;
+  font-size: 11px;
+  text-align: left;
+}
+.answer-table th,
+.answer-table td {
+  padding: 12px;
+  vertical-align: top;
+}
+.answer-table tr + tr td,
+.answer-table tbody tr:first-child td {
+  border-top: 1px solid #e9ecf0;
+}
+.answer-table code {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.answer-table th {
+  overflow-wrap: normal;
+}
+.answer-table th:first-child {
+  min-width: 52px;
+}

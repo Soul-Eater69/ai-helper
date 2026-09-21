@@ -1,6 +1,6 @@
 import { splitAnswer } from '../../shared/revision';
-import { useState } from 'react';
-import Markdown from 'react-markdown';
+import { useEffect, useRef, useState } from 'react';
+import AnswerContent from './AnswerContent';
 import { ArrowUpRight, Check, Copy, MessageSquare, Sparkles, Square } from 'lucide-react';
 import type { Workspace } from '../hooks/useSession';
 import PracticeTools from './PracticeTools';
@@ -11,13 +11,43 @@ export default function AnswerPanel({
   work: Workspace;
   openSettings: () => void;
 }) {
-  const [copied, setCopied] = useState(false);
-  const turn = work.turns.find((t) => t.id === work.selected) ?? work.turns.at(-1);
-  const text = turn?.status === 'done' ? splitAnswer(turn.answer, 0).spoken : (turn?.answer ?? '');
+  const [copied, setCopied] = useState<string | null>(null);
+  const scroll = useRef<HTMLDivElement>(null);
+  const items = useRef(new Map<string, HTMLElement>());
+  const latest = work.turns.at(-1);
+  useEffect(() => {
+    const item = items.current.get(work.selected ?? latest?.id ?? '');
+    if (item && scroll.current) {
+      const container = scroll.current;
+      container.scrollTop +=
+        item.getBoundingClientRect().top - container.getBoundingClientRect().top - 20;
+    }
+  }, [work.selected, work.navigationRequest, latest?.id]);
   return (
     <section className="answer-panel" aria-label="Answer workspace">
-      <div className={`answer-scroll ${turn ? '' : 'is-empty'}`}>
-        {!turn ? (
+      {work.turns.length > 1 && (
+        <div className="conversation-toolbar">
+          <span>Conversation · {work.turns.length} exchanges</span>
+          <button
+            className="text-button"
+            onClick={() => {
+              if (latest) {
+                work.setSelected(latest.id);
+                const item = items.current.get(latest.id);
+                if (item && scroll.current)
+                  scroll.current.scrollTop +=
+                    item.getBoundingClientRect().top -
+                    scroll.current.getBoundingClientRect().top -
+                    20;
+              }
+            }}
+          >
+            Latest response ↓
+          </button>
+        </div>
+      )}
+      <div ref={scroll} className={`answer-scroll ${latest ? '' : 'is-empty'}`}>
+        {!latest ? (
           <div className="empty-state">
             <h1>Let’s work through it.</h1>
             <p>Bring a question. We’ll take it from there.</p>
@@ -31,62 +61,80 @@ export default function AnswerPanel({
             </div>
           </div>
         ) : (
-          <>
-            <div className="question-card">
-              <span className="eyebrow">
-                <MessageSquare size={12} /> CURRENT QUESTION
-              </span>
-              <h2>{turn.question}</h2>
-            </div>
-            <div className="response-label">
-              <span className="assistant-avatar">
-                <Sparkles size={13} />
-              </span>
-              <strong>Suggested response</strong>
-              <span className={`response-status ${turn.status}`}>
-                {turn.status === 'streaming'
-                  ? 'Writing…'
-                  : turn.status === 'done'
-                    ? 'Ready'
-                    : turn.status === 'cancelled'
-                      ? 'Interrupted'
-                      : 'Incomplete'}
-              </span>
-            </div>
-            <article className="markdown">
-              <Markdown
-                components={{ a: ({ children }) => <span>{children}</span>, img: () => null }}
+          work.turns.map((turn, index) => {
+            const text =
+              turn.status === 'done' && turn.id === latest.id
+                ? splitAnswer(turn.answer, 0).spoken
+                : turn.answer;
+            return (
+              <section
+                className="conversation-turn"
+                aria-label={`Exchange ${index + 1}`}
+                key={turn.id}
+                ref={(node) => {
+                  if (node) items.current.set(turn.id, node);
+                  else items.current.delete(turn.id);
+                }}
               >
-                {text ||
-                  (turn.status === 'streaming'
-                    ? 'Thinking through the question…'
-                    : 'No response completed. Try the question again.')}
-              </Markdown>
-              {turn.status === 'streaming' && <span className="stream-cursor" />}
-            </article>
-            {turn.status === 'done' && (
-              <div className="answer-actions">
-                <button
-                  className="subtle"
-                  onClick={() => {
-                    void navigator.clipboard
-                      .writeText(text)
-                      .then(() => {
-                        setCopied(true);
-                        setTimeout(() => setCopied(false), 2000);
-                      })
-                      .catch(() =>
-                        work.setError('Could not copy. Select the response and copy it manually.'),
-                      );
-                  }}
-                >
-                  {copied ? <Check size={14} /> : <Copy size={14} />}{' '}
-                  {copied ? 'Copied' : 'Copy response'}
-                </button>
-                <span>Review for accuracy before using.</span>
-              </div>
-            )}
-          </>
+                <div className="question-card">
+                  <span className="eyebrow">
+                    <MessageSquare size={12} /> QUESTION {index + 1}
+                  </span>
+                  <h2>{turn.question}</h2>
+                </div>
+                <div className="response-label">
+                  <span className="assistant-avatar">
+                    <Sparkles size={13} />
+                  </span>
+                  <strong>Suggested response</strong>
+                  <span className={`response-status ${turn.status}`}>
+                    {turn.status === 'streaming'
+                      ? 'Writing…'
+                      : turn.status === 'done'
+                        ? 'Ready'
+                        : turn.status === 'cancelled'
+                          ? 'Interrupted'
+                          : 'Incomplete'}
+                  </span>
+                </div>
+                <article className="markdown">
+                  <AnswerContent
+                    text={
+                      text ||
+                      (turn.status === 'streaming'
+                        ? 'Thinking through the question…'
+                        : 'No response completed. Try the question again.')
+                    }
+                  />
+                  {turn.status === 'streaming' && <span className="stream-cursor" />}
+                </article>
+                {turn.status === 'done' && (
+                  <div className="answer-actions">
+                    <button
+                      className="subtle"
+                      onClick={() => {
+                        void navigator.clipboard
+                          .writeText(text)
+                          .then(() => {
+                            setCopied(turn.id);
+                            setTimeout(() => setCopied(null), 2000);
+                          })
+                          .catch(() =>
+                            work.setError(
+                              'Could not copy. Select the response and copy it manually.',
+                            ),
+                          );
+                      }}
+                    >
+                      {copied === turn.id ? <Check size={14} /> : <Copy size={14} />}{' '}
+                      {copied === turn.id ? 'Copied' : 'Copy response'}
+                    </button>
+                    <span>Review for accuracy before using.</span>
+                  </div>
+                )}
+              </section>
+            );
+          })
         )}
       </div>
       <PracticeTools work={work} />
