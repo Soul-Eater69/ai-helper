@@ -19,6 +19,40 @@ export function friendlyError(error: unknown): string {
     return 'OpenAI rejected the request. Check your model settings and try a shorter question.';
   return 'The request could not finish. Check your connection and model access, then retry. Your code is unchanged.';
 }
+/**
+ * Frames the turn as something a person said, rather than a JSON record.
+ *
+ * The payload used to be `JSON.stringify({question, currentCode, ...})`. A model handed
+ * a data structure answers like a data structure -- headings, labelled fields, no voice --
+ * which is the opposite of what gets read aloud in an interview. Only the sections that
+ * actually have content are included, so an empty profile does not imply the candidate
+ * has no experience worth mentioning.
+ */
+export function composeTurn(request: AnswerRequest, settings: Settings): string {
+  const parts: string[] = [];
+
+  const spoken = (request.speechContext ?? []).filter((line) => line.trim());
+  if (spoken.length)
+    parts.push(`Just heard in the room:\n${spoken.map((line) => `- ${line}`).join('\n')}`);
+
+  if (request.context.trim())
+    parts.push(`Things established earlier in this interview:\n${request.context.trim()}`);
+
+  if (settings.profile.trim())
+    parts.push(
+      `Your own background, which is the only experience you may draw on:\n${settings.profile.trim()}`,
+    );
+
+  if (request.code.trim())
+    parts.push(
+      `What is currently in your editor (${request.language}). This is the truth, even if you said something different earlier:\n\`\`\`${request.language}\n${request.code}\n\`\`\``,
+    );
+
+  parts.push(`They just asked:\n${request.question.trim()}`);
+  parts.push(`Answer out loud, in ${request.language} if code is needed.`);
+  return parts.join('\n\n');
+}
+
 export const openAIProvider: StreamProvider = async function* (request, settings, key, signal) {
   const client = new OpenAI({ apiKey: key, maxRetries: 1, timeout: 60000 });
   const stream = await client.responses.create(
@@ -28,20 +62,7 @@ export const openAIProvider: StreamProvider = async function* (request, settings
       store: false,
       instructions: buildInstructions(settings),
       max_output_tokens: 6000,
-      input: [
-        ...request.history,
-        {
-          role: 'user',
-          content: JSON.stringify({
-            question: request.question,
-            pinnedContext: request.context,
-            recentSpokenContext: request.speechContext ?? [],
-            language: request.language,
-            currentCode: request.code,
-            experienceFacts: settings.profile,
-          }),
-        },
-      ],
+      input: [...request.history, { role: 'user', content: composeTurn(request, settings) }],
     },
     { signal },
   );

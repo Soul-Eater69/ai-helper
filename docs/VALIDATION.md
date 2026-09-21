@@ -28,3 +28,22 @@ Changed the new-install default to `gpt-4o-mini-transcribe` for the existing ser
 ## Automatic conversational responses
 
 Replaced keyword question detection with a model decision (`answer`, `wait`, `ignore`). Deterministic tests cover fragment accumulation, retained spoken context, automatic short replies, ignored speech, invalid decisions and cancellation on new speech or stop. A browser integration test emits transcripts and verifies automatic answers plus clarification context without clicking Generate. Its model decisions are mocked. Live decision accuracy, speaker ambiguity and end-to-end latency still require actual audio and API access.
+
+## Spoken-register refinement
+
+- `splitAnswer` now derives the spoken transcript and the code proposal from one pass.
+  They were previously produced by two regexes that disagreed: a brute-force-then-optimal
+  answer proposed nothing and had _both_ blocks stripped from the transcript, which told
+  the user to look in a workspace the code had never reached. The last block tagged with
+  a programming language is the proposal; earlier blocks and untagged output fences stay
+  inline where they were said.
+- The prompt was rewritten for spoken delivery. Topic guidance is now conditional rather
+  than three unconditional personas concatenated on every turn, and explicit delivery
+  rules forbid headings, bold labels, nested lists and warm-up phrases.
+- The turn sent to the model is prose instead of `JSON.stringify(...)`. A model handed a
+  data structure answers like one; empty sections are omitted entirely.
+- 50 unit tests, 6 browser tests, strict type check, production build and Prettier pass.
+
+Not verified here: whether answers actually sound more natural from a live model, which
+needs a real key and a listener. Prompt-quality claims are unproven until item 9 in
+TESTING.md is run with audio.

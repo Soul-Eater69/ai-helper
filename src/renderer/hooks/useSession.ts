@@ -5,7 +5,7 @@ import {
   editDocument,
   acceptRevision,
   undoRevision,
-  extractProposal,
+  splitAnswer,
   type Proposal,
 } from '../../shared/revision';
 import {
@@ -175,7 +175,7 @@ export function useSession() {
               t.id === event.id ? { ...t, answer: event.text, status: 'done' } : t,
             ),
           );
-          const nextProposal = extractProposal(event.text, captured.version);
+          const { proposal: nextProposal } = splitAnswer(event.text, captured.version);
           if (nextProposal) {
             setProposal(nextProposal);
             setProposalBase(captured.code);

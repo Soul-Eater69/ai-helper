@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import Markdown from 'react-markdown';
 import { ArrowUpRight, Check, Copy, MessageSquare, Sparkles, Square } from 'lucide-react';
+import { splitAnswer } from '../../shared/revision';
 import type { Workspace } from '../hooks/useSession';
 export default function AnswerPanel({
   work,
@@ -11,11 +12,9 @@ export default function AnswerPanel({
 }) {
   const [copied, setCopied] = useState(false);
   const turn = work.turns.find((t) => t.id === work.selected) ?? work.turns.at(-1);
-  const text =
-    turn?.answer.replace(
-      /^```(?:python|java|typescript|javascript|cpp|c\+\+)[^\n]*\n[\s\S]*?^```\s*$/gm,
-      '\n*Code is available in the workspace for review.*\n',
-    ) ?? '';
+  // Same split the workspace uses, so the transcript can never point at code that
+  // did not actually make it into the editor.
+  const text = turn ? splitAnswer(turn.answer, 0).spoken : '';
   return (
     <section className="answer-panel" aria-label="Answer workspace">
       <div className={`answer-scroll ${turn ? '' : 'is-empty'}`}>
