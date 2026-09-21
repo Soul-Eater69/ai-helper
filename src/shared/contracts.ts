@@ -18,7 +18,7 @@ export const settingsSchema = z
       .min(1)
       .max(100)
       .regex(/^[a-zA-Z0-9_.:-]+$/)
-      .default('gpt-live-transcribe'),
+      .default('gpt-4o-mini-transcribe'),
     language: z.enum(languages).default('python'),
     style: z
       .string()

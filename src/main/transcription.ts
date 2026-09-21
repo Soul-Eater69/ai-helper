@@ -2,6 +2,28 @@ import WebSocket from 'ws';
 import type { AppEvent } from '../shared/contracts';
 import { TranscriptBuffer } from '../shared/transcript';
 
+// Only deliberately constructed diagnostics cross the renderer boundary.
+class TranscriptionError extends Error {}
+function providerError(value: unknown): TranscriptionError {
+  const error = value && typeof value === 'object' ? (value as Record<string, unknown>) : {};
+  const token = (value: unknown) =>
+    typeof value === 'string' && /^[a-zA-Z0-9_.]{1,140}$/.test(value) ? value : '';
+  const code = token(error.code) || token(error.type) || 'unknown_error';
+  const param = token(error.param);
+  const hint =
+    code === 'invalid_api_key'
+      ? 'Your API key was rejected. Update it in Settings.'
+      : code === 'insufficient_quota'
+        ? 'Check your OpenAI API billing and available credits.'
+        : code === 'model_not_found'
+          ? 'Choose a transcription model available to your API project.'
+          : code === 'rate_limit_exceeded'
+            ? 'OpenAI rate limit reached. Wait briefly and retry.'
+            : 'Check the transcription model in Settings; try gpt-4o-mini-transcribe.';
+  return new TranscriptionError(
+    `OpenAI transcription error: ${code}${param ? ` at ${param}` : ''}. ${hint}`,
+  );
+}
 export class TranscriptionService {
   private socket?: WebSocket;
   private epoch = 0;
@@ -19,10 +41,11 @@ export class TranscriptionService {
     this.emit({ type: 'audio.status', status: 'connecting' });
     try {
       await this.connect(key, model, epoch);
-    } catch {
+    } catch (error) {
       if (epoch === this.epoch) this.stop();
-      throw new Error(
-        'Could not start transcription. Check your API key, transcription model and connection.',
+      if (error instanceof TranscriptionError) throw error;
+      throw new TranscriptionError(
+        'Could not connect to OpenAI transcription. Check your network or proxy and retry.',
       );
     }
   }
@@ -83,7 +106,11 @@ export class TranscriptionService {
       };
       this.pendingReject = fail;
       const timeout = setTimeout(() => {
-        fail(new Error('Transcription setup timeout'));
+        fail(
+          new TranscriptionError(
+            'OpenAI transcription setup timed out. Check your network and retry.',
+          ),
+        );
         socket.terminate();
       }, 15000);
       socket.on('open', () => {
@@ -130,14 +157,13 @@ export class TranscriptionService {
           resolve();
         } else if (event.type === 'error') {
           if (!acknowledged) {
-            fail(new Error('Transcription configuration rejected'));
+            fail(providerError(event.error));
             socket.terminate();
           } else {
             this.emit({
               type: 'audio.status',
               status: 'error',
-              message:
-                'Transcription was interrupted by a provider error. Check the transcription model and restart listening.',
+              message: providerError(event.error).message,
             });
             this.stop();
           }
@@ -174,15 +200,38 @@ export class TranscriptionService {
             });
         }
       });
+      socket.on('unexpected-response', (_request, response) => {
+        response.resume();
+        const status = response.statusCode;
+        const message =
+          status === 401
+            ? 'Your API key was rejected by OpenAI. Update it in Settings.'
+            : status === 403
+              ? 'OpenAI denied transcription access. Check your API project permissions and model access.'
+              : status === 429
+                ? 'OpenAI rejected the connection due to quota or rate limits. Check API billing and retry.'
+                : `OpenAI transcription connection failed (HTTP ${status ?? 'unknown'}). Check your network or proxy.`;
+        fail(new TranscriptionError(message));
+        socket.terminate();
+      });
       socket.on('error', () => {
-        if (!acknowledged) fail(new Error('Audio connection failed'));
+        if (!acknowledged)
+          fail(
+            new TranscriptionError(
+              'Could not connect to OpenAI transcription. Check your network, firewall or proxy.',
+            ),
+          );
       });
       socket.on('close', () => {
         clearTimeout(timeout);
         if (epoch !== this.epoch || !this.running) return;
         this.ready = false;
         if (!acknowledged) {
-          fail(new Error('Audio connection closed'));
+          fail(
+            new TranscriptionError(
+              'OpenAI closed the transcription connection before setup completed. Retry listening.',
+            ),
+          );
           return;
         }
         this.reconnect(key, model, epoch);

@@ -29,7 +29,7 @@ npm run build
 npm start
 ```
 
-Open **Settings**, enter an OpenAI API key, select models available to your API account, and add your verified experience. The default answer model is configurable; the default transcription model is `gpt-live-transcribe`. Model availability depends on your account. API charges are separate from a ChatGPT subscription.
+Open **Settings**, enter an OpenAI API key, select models available to your API account, and add your verified experience. The default answer model is configurable; the default transcription model is `gpt-4o-mini-transcribe`. Model availability depends on your account. API charges are separate from a ChatGPT subscription.
 
 For development, use `npm run dev`. Renderer edits reload automatically; restart the command after changing main/preload code.
 
@@ -44,6 +44,10 @@ For development, use `npm run dev`. Renderer edits reload automatically; restart
 System audio captures **all playback on the computer**, not only Zoom or an individual speaker. Use headphones to avoid feedback and stop other playback. This app does not join Zoom, bypass meeting controls, identify speakers, or modify the interview's external editor. Its integrated editor is the source of truth for code proposals; paste external changes into it before requesting a revision.
 
 Transcription uses English settings. Detection is a conservative local heuristic, not perfect semantic recognition. For multi-part questions, disable automatic answers in Settings, review/edit the transcript in the question box, then send. Reconnect notices identify periods where audio is dropped; repeat the question after recovery. A change of transcription model requires restarting listening.
+
+### Transcription startup errors
+
+If you saved settings with the earlier `gpt-live-transcribe` default, change **Settings → Transcription model** to `gpt-4o-mini-transcribe`, save, and restart listening. Saved model choices are not overwritten by updates. This app uses server voice activity detection to commit speech turns; the live model configuration can reject that setting. Startup errors now distinguish authentication, HTTP access/rate limits, configuration rejection and network failure. Provider error codes and parameter names are shown without raw provider messages or credentials.
 
 ### Code review
 

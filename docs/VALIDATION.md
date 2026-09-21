@@ -3,7 +3,7 @@
 ## Verified in the implementation environment
 
 - TypeScript strict type check passed.
-- 23 domain/service/lifecycle/context tests passed.
+- 28 domain/service/lifecycle/context/transcription tests passed.
 - Five browser workflow tests passed: visible insertion/deletion diffs and accept/undo, unified workspace, sidebar collapse and prompt settings, refusal of stale proposals after manual edits, desktop layout overflow, and cross-topic follow-ups preserving pinned context, request history, pending revisions and accepted code. The cross-topic test uses a mocked desktop provider; actual model interpretation of mixed questions remains a live acceptance check.
 - Production renderer/main/preload build passed.
 - Source formatted with Prettier.
@@ -20,3 +20,7 @@ Browser tests ran using Playwright 1.63.0 with locally available Chromium headle
 - End-to-end interruption latency and transcript quality on actual meeting audio.
 
 These are release acceptance items in TESTING.md. This is tested initial-release source, not a certification of enterprise production readiness. The scope is a single-user desktop application; organizational controls were not part of the approved first release.
+
+## Transcription startup correction
+
+Changed the new-install default to `gpt-4o-mini-transcribe` for the existing server-VAD flow. Existing saved settings are retained and must be changed explicitly. Mock WebSocket tests cover configuration rejection, HTTP authentication rejection, network errors and acknowledgement before readiness. Provider diagnostics expose error codes and parameter names, not raw error messages. These tests do not establish live API connectivity or model access for a user account.
