@@ -16,6 +16,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:ui": "playwright test",
+    "eval:lld": "node scripts/eval-lld.mjs",
     "check": "npm run typecheck && npm test && npm run build",
     "start": "electron .",
     "package:win": "npm run build && electron-builder --win nsis --x64 --publish never",

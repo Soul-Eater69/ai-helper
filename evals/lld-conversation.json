@@ -1,0 +1,63 @@
+[
+  {
+    "name": "parking-reference",
+    "turns": [
+      {
+        "question": "Design a parking lot system.",
+        "review": "Brief understanding and one useful scope question; no full design or assumptions."
+      },
+      {
+        "question": "Single level. It supports cars, trucks and bikes, with one entry and one exit.",
+        "notes": ["single|one.level", "car", "truck", "bike", "entry", "exit"],
+        "review": "Absorb all supplied facts. Ask only about a meaningful gap, such as spot compatibility. Do not ask vehicle types, floors or gate counts again."
+      },
+      {
+        "question": "Each type has dedicated spots. The driver cannot choose. The system assigns the spot on the ticket. At exit the spot becomes available again. Pricing and payments are another service.",
+        "notes": ["car", "truck", "bike", "dedicated|matching|own.*spot|exact", "ticket", "exit"],
+        "exclusions": ["pric|fee", "payment"],
+        "design": true,
+        "review": "Move into design now: explain why ticket links vehicle and spot, then responsibilities/state. No permission to sketch classes. No repeated questions about exit, types, gates, or payment. Do not invent full-capacity or allocation-order policy."
+      },
+      {
+        "question": "Why do you need a ticket?",
+        "review": "Answer the ticket question directly and briefly, linking it to lookup/exit. Do not restart clarification or dump the full design."
+      },
+      {
+        "question": "Actually bikes can use car spots too, but trucks still need truck spots.",
+        "notes": ["bike.*car|car.*bike", "truck"],
+        "review": "Update compatibility without losing other requirements. Explain the affected search rule; ask about bike-spot preference only if needed. Do not infer preference."
+      }
+    ]
+  },
+  {
+    "name": "examples-are-not-agreement",
+    "history": [
+      { "role": "user", "content": "Design a parking lot." },
+      { "role": "assistant", "content": "Should we support different vehicle sizes?" },
+      { "role": "user", "content": "Yes." },
+      { "role": "assistant", "content": "Should I choose the first available spot?" }
+    ],
+    "turns": [
+      {
+        "question": "Why didn't you first ask whether it accepts cars, trucks and bikes?",
+        "review": "Acknowledge briefly and ask which types. Do not log all three illustrative types as agreed."
+      }
+    ]
+  },
+  {
+    "name": "locker-transfer",
+    "turns": [
+      {
+        "question": "Design Amazon Locker for one location. Exact size matching, pickup codes expire after 24 hours, no replacement codes. Drivers deposit packages and customers collect them.",
+        "notes": ["exact", "24", "code"],
+        "exclusions": ["replacement"],
+        "design": true,
+        "review": "Transfer the conversational approach to lockers, without parking facts. Explain occupancy separately from expiry and begin responsibilities. Do not add recovery policies or repeat settled questions."
+      },
+      {
+        "question": "Why not free the compartment when the pickup code expires?",
+        "review": "Briefly explain that the package is still inside. No rewrite, restart or repeated full walkthrough."
+      }
+    ]
+  }
+]

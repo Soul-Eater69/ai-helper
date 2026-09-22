@@ -9,3 +9,5 @@ playwright-report/
 .superpowers/
 *.log
 *.local
+
+.eval-results/
