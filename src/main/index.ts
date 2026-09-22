@@ -170,10 +170,11 @@ async function boot(): Promise<void> {
     if (epoch !== startEpoch) return;
     captureGrant = { source, expires: Date.now() + 30000 };
   });
-  handle('audio:stop', () => {
-    cancelSpeech();
+  handle('audio:stop', (input) => {
+    const finish = z.boolean().optional().parse(input);
     startEpoch++;
     captureGrant = undefined;
+    if (finish) return transcription.finish();
     transcription.stop();
   });
   handle('sessions:list', () => vault.sessions());

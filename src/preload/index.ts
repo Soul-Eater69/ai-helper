@@ -13,7 +13,7 @@ const api: DesktopAPI = {
   routeSpeech: (request) => ipcRenderer.invoke('speech:route', request),
   cancelSpeech: () => ipcRenderer.invoke('speech:cancel'),
   startAudio: (source) => ipcRenderer.invoke('audio:start', source),
-  stopAudio: () => ipcRenderer.invoke('audio:stop'),
+  stopAudio: (finish) => ipcRenderer.invoke('audio:stop', finish),
   sendAudio: (data) => ipcRenderer.send('audio:chunk', data),
   onEvent: (callback) => {
     const listener = (_event: Electron.IpcRendererEvent, value: AppEvent) => callback(value);

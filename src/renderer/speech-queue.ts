@@ -2,6 +2,7 @@ import type { SpeechDecision } from '../shared/contracts';
 /** Assemble speech across pauses and discard decisions overtaken by newer audio. */
 export class SpeechQueue {
   private pending = '';
+  private held = false;
   private speaking = new Set<string>();
   private recent: string[] = [];
   private epoch = 0;
@@ -25,11 +26,22 @@ export class SpeechQueue {
     this.partial();
     if (id) this.speaking.delete(id);
     if (text.trim()) this.pending = `${this.pending} ${text}`.trim().slice(-20000);
-    if (!this.pending || this.speaking.size) return;
+    if (!this.pending || this.speaking.size || this.held) return;
     const epoch = this.epoch;
-    this.timer = setTimeout(() => void this.decide(epoch), 1100);
+    this.timer = setTimeout(() => void this.decide(epoch), 350);
+  }
+  hold(): void {
+    this.partial();
+    this.held = true;
+  }
+  finish(): void {
+    this.partial();
+    this.held = false;
+    this.speaking.clear();
+    if (this.pending) void this.decide(this.epoch, true);
   }
   stop(clearContext = false): void {
+    this.held = false;
     this.partial();
     this.pending = '';
     this.speaking.clear();

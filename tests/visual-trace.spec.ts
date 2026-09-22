@@ -1,47 +1,63 @@
 import { expect, test, type Page } from '@playwright/test';
 import { dpTrace, treeTrace, traceFence } from './fixtures/visual-traces';
 
-async function supplyAnswers(page: Page, answers: string[]) {
-  await page.addInitScript((replies) => {
-    const listeners = new Set<(event: unknown) => void>();
-    let index = 0;
-    Object.assign(window, {
-      desktop: {
-        isDesktop: true,
-        getSettings: async () => ({
-          hasKey: true,
-          settings: {
-            model: 'test',
-            transcriptionModel: 'test',
-            language: 'python',
-            style: '',
-            profile: '',
-            prompts: { lld: '', dsa: '', behavioral: '' },
-            autoAnswer: false,
-            saveHistory: false,
+async function supplyAnswers(page: Page, answers: string[], autoAnswer = false) {
+  await page.addInitScript(
+    ({ replies, autoAnswer }) => {
+      const listeners = new Set<(event: unknown) => void>();
+      let index = 0;
+      Object.assign(window, {
+        emitAudioTest: (event: unknown) => listeners.forEach((fn) => fn(event)),
+        desktop: {
+          isDesktop: true,
+          getSettings: async () => ({
+            hasKey: true,
+            settings: {
+              model: 'test',
+              transcriptionModel: 'test',
+              language: 'python',
+              style: '',
+              profile: '',
+              prompts: { lld: '', dsa: '', behavioral: '' },
+              autoAnswer,
+              saveHistory: false,
+            },
+          }),
+          listSessions: async () => [],
+          cancel: async () => {},
+          cancelSpeech: async () => {},
+          stopAudio: async (finish?: boolean) => {
+            if (finish) {
+              listeners.forEach((fn) =>
+                fn({
+                  type: 'transcript.final',
+                  id: 'paused-tail',
+                  text: 'Explain parking allocation',
+                }),
+              );
+            }
+            listeners.forEach((fn) => fn({ type: 'audio.status', status: 'stopped' }));
           },
-        }),
-        listSessions: async () => [],
-        cancel: async () => {},
-        cancelSpeech: async () => {},
-        stopAudio: async () => {},
-        onEvent: (fn: (event: unknown) => void) => {
-          listeners.add(fn);
-          return () => listeners.delete(fn);
+          routeSpeech: async () => ({ action: 'answer' }),
+          onEvent: (fn: (event: unknown) => void) => {
+            listeners.add(fn);
+            return () => listeners.delete(fn);
+          },
+          answer: async (request: { id: string }) => {
+            const text = replies[index++];
+            listeners.forEach((fn) =>
+              fn({ type: 'answer.delta', id: request.id, text: '```dry-run\n{"version":' }),
+            );
+            setTimeout(
+              () => listeners.forEach((fn) => fn({ type: 'answer.done', id: request.id, text })),
+              150,
+            );
+          },
         },
-        answer: async (request: { id: string }) => {
-          const text = replies[index++];
-          listeners.forEach((fn) =>
-            fn({ type: 'answer.delta', id: request.id, text: '```dry-run\n{"version":' }),
-          );
-          setTimeout(
-            () => listeners.forEach((fn) => fn({ type: 'answer.done', id: request.id, text })),
-            150,
-          );
-        },
-      },
-    });
-  }, answers);
+      });
+    },
+    { replies: answers, autoAnswer },
+  );
   await page.goto('/');
 }
 async function ask(page: Page, question: string) {
@@ -407,4 +423,22 @@ test('code can expand, close and reopen without losing its proposal', async ({ p
   await expect
     .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth))
     .toBe(true);
+});
+
+test('pausing submits the last captured question and restart does not cancel its answer', async ({
+  page,
+}) => {
+  await supplyAnswers(page, ['Use the agreed vehicle types to find a compatible free spot.'], true);
+  const emit = (event: unknown) =>
+    page.evaluate(
+      (e) => (window as unknown as { emitAudioTest: (e: unknown) => void }).emitAudioTest(e),
+      event,
+    );
+  await emit({ type: 'audio.status', status: 'ready' });
+  await emit({ type: 'speech.started', id: 'paused-tail' });
+  await page.getByRole('button', { name: /Pause/ }).click();
+  await expect(page.locator('.conversation-turn')).toHaveCount(1);
+  await emit({ type: 'audio.status', status: 'connecting' });
+  await expect(page.locator('.response-status')).toHaveText('Ready');
+  await expect(page.locator('.conversation-turn')).toContainText('Explain parking allocation');
 });

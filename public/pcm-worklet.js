@@ -5,6 +5,17 @@ class PCMProcessor extends AudioWorkletProcessor {
     this.samples = new Int16Array(2400);
     this.offset = 0;
     this.energy = 0;
+    this.port.onmessage = (event) => {
+      if (event.data !== 'flush') return;
+      if (this.offset) {
+        const buffer = this.samples.slice(0, this.offset).buffer;
+        this.port.postMessage({ buffer, level: Math.sqrt(this.energy / this.offset) }, [buffer]);
+        this.samples = new Int16Array(2400);
+        this.offset = 0;
+        this.energy = 0;
+      }
+      this.port.postMessage({ flushed: true });
+    };
   }
   process(inputs) {
     const channels = inputs[0];

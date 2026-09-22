@@ -202,7 +202,7 @@ export interface DesktopAPI {
   routeSpeech(request: SpeechRequest): Promise<SpeechDecision>;
   cancelSpeech(): Promise<void>;
   startAudio(source: 'system' | 'microphone'): Promise<void>;
-  stopAudio(): Promise<void>;
+  stopAudio(finish?: boolean): Promise<void>;
   sendAudio(data: ArrayBuffer): void;
   onEvent(callback: (event: AppEvent) => void): () => void;
   listSessions(): Promise<SavedSession[]>;

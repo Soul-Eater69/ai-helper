@@ -88,3 +88,56 @@ it('releases successful empty transcription items after a speech start', async (
   expect(events).toContainEqual({ type: 'speech.skipped', id: 'noise' });
   service.stop();
 });
+
+it('pause waits for committed transcription before closing the socket', async () => {
+  const events: unknown[] = [];
+  const service = new TranscriptionService((event) => events.push(event));
+  const starting = service.start('key', 'test');
+  const socket = sockets[0];
+  const emit = (event: unknown) => socket.emit('message', JSON.stringify(event));
+  emit({ type: 'session.updated' });
+  await starting;
+  const paused = service.finish();
+  emit({ type: 'input_audio_buffer.committed', item_id: 'last', previous_item_id: null });
+  emit({ type: 'input_audio_buffer.cleared' });
+  expect(events).not.toContainEqual({ type: 'audio.status', status: 'stopped' });
+  emit({
+    type: 'conversation.item.input_audio_transcription.completed',
+    item_id: 'last',
+    transcript: 'Which vehicles?',
+  });
+  await paused;
+  expect(events).toContainEqual({ type: 'transcript.final', id: 'last', text: 'Which vehicles?' });
+  expect(events.at(-1)).toEqual({ type: 'audio.status', status: 'stopped' });
+});
+
+it('an already committed empty buffer can pause without an error', async () => {
+  const events: unknown[] = [];
+  const service = new TranscriptionService((event) => events.push(event));
+  const starting = service.start('key', 'test');
+  const emit = (event: unknown) => sockets[0].emit('message', JSON.stringify(event));
+  emit({ type: 'session.updated' });
+  await starting;
+  const paused = service.finish();
+  emit({ type: 'error', error: { code: 'input_audio_buffer_commit_empty' } });
+  emit({ type: 'input_audio_buffer.cleared' });
+  await paused;
+  expect(events).not.toEqual(
+    expect.arrayContaining([expect.objectContaining({ status: 'error' })]),
+  );
+  expect(events.at(-1)).toEqual({ type: 'audio.status', status: 'stopped' });
+});
+
+it('a hard stop resolves a pending pause without later closing a new connection', async () => {
+  const service = new TranscriptionService(() => {});
+  const start = service.start('key', 'test');
+  sockets[0].emit('message', JSON.stringify({ type: 'session.updated' }));
+  await start;
+  const pause = service.finish();
+  service.stop();
+  await pause;
+  const restart = service.start('key', 'test');
+  sockets[1].emit('message', JSON.stringify({ type: 'session.updated' }));
+  await restart;
+  service.stop();
+});

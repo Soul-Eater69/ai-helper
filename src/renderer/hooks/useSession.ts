@@ -68,6 +68,8 @@ export function useSession() {
     source: 'working' | 'proposal';
   } | null>(null);
   const audio = useRef<AudioCapture | null>(null);
+  const pausedAudio = useRef(false);
+  const pausing = useRef<Promise<void> | null>(null);
   const speechQueue = useRef<SpeechQueue | null>(null);
   const current = useRef({ settings, context, doc, turns, demo, proposal, images });
   current.current = { settings, context, doc, turns, demo, proposal, images };
@@ -86,6 +88,7 @@ export function useSession() {
     void refreshSettings();
   }, [refreshSettings]);
   const stopAnswer = useCallback(async () => {
+    pausedAudio.current = false;
     speechQueue.current?.stop();
     void desktopAPI.cancelSpeech();
     const previous = active.current;
@@ -232,6 +235,7 @@ export function useSession() {
           setSpeechStatus('');
         }
       } else if (event.type === 'speech.started') {
+        if (!pausing.current) pausedAudio.current = false;
         if (current.current.settings.autoAnswer) speechQueue.current?.started(event.id);
       } else if (event.type === 'speech.skipped') {
         if (current.current.settings.autoAnswer) speechQueue.current?.final('', event.id);
@@ -247,7 +251,9 @@ export function useSession() {
         setAudioStatus(event.status);
         if (event.message)
           event.status === 'error' ? setError(event.message) : setNotice(event.message);
-        if (['stopped', 'error', 'reconnecting', 'connecting'].includes(event.status)) {
+        if (event.status === 'stopped' && pausedAudio.current) {
+          speechQueue.current?.finish();
+        } else if (['stopped', 'error', 'reconnecting'].includes(event.status)) {
           speechQueue.current?.stop();
           void desktopAPI.cancelSpeech();
         }
@@ -421,6 +427,7 @@ export function useSession() {
       setNotice('Previous code restored');
     },
     startAudio: async (source: 'system' | 'microphone') => {
+      await pausing.current;
       setError('');
       setNotice('');
       setAudioStatus('connecting');
@@ -432,9 +439,22 @@ export function useSession() {
       }
     },
     stopAudio: () => {
-      speechQueue.current?.stop();
-      void desktopAPI.cancelSpeech();
-      return audio.current?.stop();
+      if (pausing.current) return pausing.current;
+      pausedAudio.current = true;
+      speechQueue.current?.hold();
+      setSpeechStatus('Finishing captured question');
+      const task = (audio.current?.pause() ?? Promise.resolve())
+        .catch(async (error) => {
+          pausedAudio.current = false;
+          speechQueue.current?.stop();
+          setError(message(error));
+          await audio.current?.stop();
+        })
+        .finally(() => {
+          pausing.current = null;
+        });
+      pausing.current = task;
+      return task;
     },
     deleteSession: async (id: string) => {
       await desktopAPI.deleteSession(id);

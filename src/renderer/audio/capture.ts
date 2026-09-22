@@ -4,6 +4,7 @@ export class AudioCapture {
   private stream?: MediaStream;
   private node?: AudioWorkletNode;
   private generation = 0;
+  private flushed?: () => void;
   constructor(
     private api: DesktopAPI,
     private level: (value: number) => void,
@@ -55,6 +56,10 @@ export class AudioCapture {
       this.node = node;
       node.port.onmessage = (event) => {
         if (generation !== this.generation) return;
+        if (event.data.flushed) {
+          this.flushed?.();
+          return;
+        }
         this.api.sendAudio(event.data.buffer);
         this.level(Math.min(1, event.data.level * 5));
       };
@@ -78,6 +83,28 @@ export class AudioCapture {
     this.context = undefined;
     if (context && context.state !== 'closed') await context.close();
     this.level(0);
+  }
+  async pause(): Promise<void> {
+    const generation = this.generation;
+    if (this.context?.state === 'running') await this.context.suspend();
+    if (generation !== this.generation) return;
+    if (this.node) {
+      await new Promise<void>((resolve) => {
+        const timer = setTimeout(() => {
+          this.flushed = undefined;
+          resolve();
+        }, 250);
+        this.flushed = () => {
+          clearTimeout(timer);
+          this.flushed = undefined;
+          resolve();
+        };
+        this.node!.port.postMessage('flush');
+      });
+    }
+    if (generation !== this.generation) return;
+    await this.release();
+    await this.api.stopAudio(true);
   }
   async stop(): Promise<void> {
     await this.release();

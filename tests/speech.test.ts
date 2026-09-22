@@ -12,7 +12,9 @@ it('sends a semantic question automatically, including short clarification repli
     () => {},
   );
   queue.final('Two exits.');
-  await vi.advanceTimersByTimeAsync(1100);
+  await vi.advanceTimersByTimeAsync(349);
+  expect(route).not.toHaveBeenCalled();
+  await vi.advanceTimersByTimeAsync(1);
   expect(route).toHaveBeenCalledWith('Two exits.', []);
   expect(answer).toHaveBeenCalledWith('Two exits.', []);
 });
@@ -215,4 +217,42 @@ it('new speech cancels the scheduled final decision after a wait', async () => {
   await vi.advanceTimersByTimeAsync(3000);
   expect(route).toHaveBeenCalledTimes(1);
   expect(answer).not.toHaveBeenCalled();
+});
+
+it('finishes a paused question immediately and does not submit it twice', async () => {
+  vi.useFakeTimers();
+  const answer = vi.fn();
+  const route = vi.fn(async () => ({ action: 'answer' as const }));
+  const queue = new SpeechQueue(
+    route,
+    answer,
+    () => {},
+    () => {},
+  );
+  queue.final('Which vehicle types do we support?');
+  queue.finish();
+  await vi.advanceTimersByTimeAsync(0);
+  expect(route).toHaveBeenCalledWith('Which vehicle types do we support?', [], true);
+  await vi.advanceTimersByTimeAsync(5000);
+  expect(answer).toHaveBeenCalledTimes(1);
+});
+
+it('holds final fragments during pause until capture is drained', async () => {
+  vi.useFakeTimers();
+  const answer = vi.fn();
+  const route = vi.fn(async () => ({ action: 'answer' as const }));
+  const queue = new SpeechQueue(
+    route,
+    answer,
+    () => {},
+    () => {},
+  );
+  queue.final('Which vehicles');
+  queue.hold();
+  queue.final('should we support?');
+  await vi.advanceTimersByTimeAsync(2000);
+  expect(route).not.toHaveBeenCalled();
+  queue.finish();
+  await vi.advanceTimersByTimeAsync(0);
+  expect(answer).toHaveBeenCalledWith('Which vehicles should we support?', []);
 });

@@ -30,6 +30,13 @@ export class TranscriptionService {
   private running = false;
   private ready = false;
   private retries = 0;
+  private pendingItems = new Set<string>();
+  private draining?: {
+    promise: Promise<void>;
+    resolve: () => void;
+    timer: ReturnType<typeof setTimeout>;
+    acknowledged: boolean;
+  };
   private retryTimer?: ReturnType<typeof setTimeout>;
   private pendingReject?: (error: Error) => void;
   constructor(private emit: (event: AppEvent) => void) {}
@@ -49,7 +56,42 @@ export class TranscriptionService {
       );
     }
   }
+  finish(): Promise<void> {
+    if (this.draining) return this.draining.promise;
+    if (!this.ready || this.socket?.readyState !== WebSocket.OPEN) {
+      this.stop();
+      return Promise.resolve();
+    }
+    let resolve!: () => void;
+    const promise = new Promise<void>((done) => {
+      resolve = done;
+    });
+    const timer = setTimeout(() => {
+      this.emit({
+        type: 'audio.status',
+        status: 'ready',
+        message:
+          'The last audio phrase did not finish in time. Check the transcript and repeat or type any missing words.',
+      });
+      this.stop();
+    }, 6000);
+    this.draining = { promise, resolve, timer, acknowledged: false };
+    // Commit the captured tail; clear acknowledges the end of ordered client audio.
+    this.socket.send(JSON.stringify({ type: 'input_audio_buffer.commit' }));
+    this.socket.send(JSON.stringify({ type: 'input_audio_buffer.clear' }));
+    return promise;
+  }
+  private finishIfDrained(): void {
+    if (this.draining?.acknowledged && !this.pendingItems.size) this.stop();
+  }
   stop(notify = true): void {
+    const draining = this.draining;
+    this.draining = undefined;
+    if (draining) {
+      clearTimeout(draining.timer);
+      draining.resolve();
+    }
+    this.pendingItems.clear();
     this.running = false;
     this.ready = false;
     this.epoch++;
@@ -160,7 +202,12 @@ export class TranscriptionService {
           typeof event.item_id === 'string'
         ) {
           this.emit({ type: 'speech.started', id: event.item_id });
+        } else if (event.type === 'input_audio_buffer.cleared' && this.draining) {
+          this.draining.acknowledged = true;
+          this.finishIfDrained();
         } else if (event.type === 'error') {
+          const code = (event.error as { code?: string } | undefined)?.code;
+          if (this.draining && code === 'input_audio_buffer_commit_empty') return;
           if (!acknowledged) {
             fail(providerError(event.error));
             socket.terminate();
@@ -176,6 +223,7 @@ export class TranscriptionService {
           event.type === 'input_audio_buffer.committed' &&
           typeof event.item_id === 'string'
         ) {
+          this.pendingItems.add(event.item_id);
           buffer.commit(
             event.item_id,
             typeof event.previous_item_id === 'string' ? event.previous_item_id : null,
@@ -194,12 +242,14 @@ export class TranscriptionService {
           typeof event.item_id === 'string'
         ) {
           partial.delete(event.item_id);
+          this.pendingItems.delete(event.item_id);
           const text = typeof event.transcript === 'string' ? event.transcript.slice(0, 20000) : '';
           if (event.type.endsWith('.failed') || !text.trim())
             this.emit({ type: 'speech.skipped', id: event.item_id });
           for (const item of buffer.finish(event.item_id, text))
             this.emit({ type: 'transcript.final', ...item });
-          if (event.type.endsWith('.failed'))
+          this.finishIfDrained();
+          if (event.type.endsWith('.failed') && !this.draining && this.running)
             this.emit({
               type: 'audio.status',
               status: 'ready',
@@ -241,6 +291,16 @@ export class TranscriptionService {
           );
           return;
         }
+        if (this.draining) {
+          this.emit({
+            type: 'audio.status',
+            status: 'ready',
+            message: 'Audio disconnected before the last phrase finished. Check the transcript.',
+          });
+          this.stop();
+          return;
+        }
+        this.pendingItems.clear();
         this.reconnect(key, model, epoch);
       });
     });

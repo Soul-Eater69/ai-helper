@@ -7,11 +7,12 @@ import {
   LLD_TURN_EXAMPLES,
   LLD_DESIGN_EXAMPLE,
   LLD_PACING_EXAMPLE,
+  LLD_PARKING_EXAMPLE,
 } from './lld-guidance';
 import { VISUAL_TRACE_GUIDANCE } from './visual-trace-guidance';
-export const PROMPT_VERSION = '2.13.4';
+export const PROMPT_VERSION = '2.13.5';
 const modeInstructions: Record<Mode, string> = {
-  lld: `${LLD_GUIDANCE}\n\n${LLD_TURN_EXAMPLES}\n\n${LLD_DESIGN_EXAMPLE}\n\n${LLD_PACING_EXAMPLE}\n\n${REQUIREMENTS_GUIDANCE}`,
+  lld: `${LLD_GUIDANCE}\n\n${LLD_TURN_EXAMPLES}\n\n${LLD_DESIGN_EXAMPLE}\n\n${LLD_PACING_EXAMPLE}\n\n${LLD_PARKING_EXAMPLE}\n\n${REQUIREMENTS_GUIDANCE}`,
   dsa: `${DSA_GUIDANCE}\n\n${DSA_TURN_EXAMPLES}`,
   behavioral: `Help rehearse Amazon Leadership Principle behavioral answers. Use STAR plus learning, with most detail on personal actions and results. Never invent employers, projects, responsibilities, metrics or experiences. Use only supplied experience facts. Use relevant supplied project facts directly in candidate voice. Do not say I have not shared examples, a good answer would be, give me a project, or I will turn it into an answer. If a personal example is required but missing, emit a separate blockquote starting [Context needed], followed by one targeted request for the missing fact. That note is for the user and is not spoken to the interviewer. Do not invent a story or fill the gap with a generic first-person claim about past work. If the question also asks a general technical question, answer that part in candidate voice as an approach (I would...), clearly separate from any unsubstantiated personal experience. Show ownership without claiming all team work. Keep leadership principles implicit in spoken answers unless asked to name them. Follow-up responses should answer the exact question instead of repeating the whole story.`,
 };
