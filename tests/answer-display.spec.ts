@@ -31,7 +31,7 @@ test('spoken guidance and dry-run state are visually separate and fit the panel'
         },
         answer: async (request: { id: string }) => {
           const text =
-            '> Yeah, checking first means I can only match an earlier element. That handles two separate threes correctly.\n\n## Dry run\n\n| Step | Write / state | Say aloud |\n| --- | --- | --- |\n| 1 | `nums = [3, 3], target = 6, seen = {}` | I start with an empty map. |\n| 2 | `i = 0, need = 3` → store `{3: 0}` | There is no earlier three, so I save this one. |\n| 3 | `i = 1, need = 3` → return `[0, 1]` | Now the earlier three gives me a pair of different indices. |\n\n## Complexity\n\nExpected time: **O(n)** · Extra space: **O(n)**';
+            '> Yeah, checking first means I can only match an earlier element. That handles two separate threes correctly.\n\n## Algorithm\n\n```pseudocode\nFOR each value\n    IF complement is in seen\n        RETURN matching indices\n    STORE value and index\n```\n\n## Dry run\n\n| Step | Write / state | Say aloud |\n| --- | --- | --- |\n| 1 | `nums = [3, 3], target = 6, seen = {}` | I start with an empty map. |\n| 2 | `i = 0, need = 3` → store `{3: 0}` | There is no earlier three, so I save this one. |\n| 3 | `i = 1, need = 3` → return `[0, 1]` | Now the earlier three gives me a pair of different indices. |\n\n## Complexity\n\nExpected time: **O(n)** · Extra space: **O(n)**';
           setTimeout(
             () => listeners.forEach((fn) => fn({ type: 'answer.done', id: request.id, text })),
             10,
@@ -47,6 +47,8 @@ test('spoken guidance and dry-run state are visually separate and fit the panel'
   const speech = page.getByTestId('spoken-guidance');
   await expect(speech).toContainText('Say this');
   await expect(speech).toContainText('Yeah, checking first');
+  await expect(page.getByTestId('pseudocode')).toContainText('RETURN matching indices');
+  await expect(page.getByRole('button', { name: 'Accept changes' })).toHaveCount(0);
   const table = page.getByRole('table');
   await expect(table).toBeVisible();
   await expect(table.getByRole('row')).toHaveCount(4);

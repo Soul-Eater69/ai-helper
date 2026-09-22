@@ -37,7 +37,7 @@ Automatic guidance and relevant feedback accompany conversational turns. Feedbac
 
 ### Discussing the approach and reviewing code versions
 
-The approach response includes a short **Algorithm** outline: numbered steps with
+The approach response includes a short **Algorithm** block: indented language-neutral pseudocode with
 initialization, conditions, updates and return behavior. This supports the spoken
 reasoning before implementation; it does not create a workspace proposal. Follow-up
 questions get focused answers, and clarifications are reserved for decisions that
@@ -52,3 +52,15 @@ Generated versions are not necessarily accepted versions. History covers the ret
 conversation (up to 30 turns) and up to 20 pre-acceptance working snapshots, not every
 manual edit. Reopened saved sessions recover generated versions from saved answers;
 pre-acceptance working snapshots are session-only.
+
+The spoken baseline and improvement are displayed separately as **Brute force** and
+**Better approach**. A complete problem statement does not automatically settle
+input mutation or other implementation constraints: ask one consequential question
+when needed, wait, and then discuss the approach. Do not manufacture questions about
+facts already supplied. Ambiguous transcript fragments should be confirmed rather
+than expanded into invented questions.
+
+Pseudocode uses the `pseudocode` fence tag and stays in the answer panel. It is a
+planning aid, not executable source or an accepted workspace revision. Actual
+implementation still requires authorization. Short spoken explanations and trace
+tables should not repeat all the pseudocode steps aloud.

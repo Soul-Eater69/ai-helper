@@ -48,3 +48,12 @@ it('does not substitute an earlier example when the final source block is empty'
   const answer = '```python\nexample()\n```\nFinal\n```python\n\n```';
   expect(splitAnswer(answer, 0)).toEqual({ spoken: answer, proposal: null });
 });
+
+it('keeps pseudocode display-only before and beside an implementation', () => {
+  const plan =
+    '## Algorithm\n\n```pseudocode\nWHILE queue is not empty\n    process current layer\nRETURN minutes\n```';
+  expect(splitAnswer(plan, 3)).toEqual({ spoken: plan, proposal: null });
+  const mixed = splitAnswer(plan + '\n\n```python\nreturn minutes\n```', 3);
+  expect(mixed.spoken).toContain(plan);
+  expect(mixed.proposal).toEqual({ code: 'return minutes', language: 'python', baseVersion: 3 });
+});
