@@ -40,3 +40,10 @@ Locker
   expect(html).toContain('Exact size matching');
   expect(extractProposal(text, 4)).toBeNull();
 });
+
+it('applies concrete casual speech examples across the mixed-topic prompt', async () => {
+  const { SPOKEN_STYLE } = await import('../src/shared/spoken-style');
+  const prompt = buildInstructions(settingsSchema.parse({}));
+  expect(prompt).toContain(SPOKEN_STYLE);
+  expect(prompt.match(/Everyday spoken English:/g)).toHaveLength(1);
+});
