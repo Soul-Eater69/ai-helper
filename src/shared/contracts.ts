@@ -163,8 +163,8 @@ export type AppEvent =
   | { type: 'answer.done'; id: string; text: string }
   | { type: 'answer.error'; id: string; message: string }
   | { type: 'answer.cancelled'; id: string }
-  | { type: 'speech.started'; id: string }
-  | { type: 'speech.skipped'; id: string }
+  | { type: 'speech.started'; id: string; diarized?: boolean }
+  | { type: 'speech.skipped'; id: string; diarized?: boolean }
   | { type: 'transcript.partial'; id: string; text: string }
   | { type: 'transcript.final'; id: string; text: string; speaker?: number; diarized?: boolean }
   | {

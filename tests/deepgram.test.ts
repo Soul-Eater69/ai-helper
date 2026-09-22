@@ -94,7 +94,11 @@ it('ends a speech marker on an empty endpoint or utterance end', async () => {
   socket.emit('message', JSON.stringify({ type: 'SpeechStarted' }));
   result(socket, []);
   const started = events.find((e) => e.type === 'speech.started');
-  expect(events).toContainEqual({ type: 'speech.skipped', id: (started as any).id });
+  expect(events).toContainEqual({
+    type: 'speech.skipped',
+    id: (started as any).id,
+    diarized: true,
+  });
 });
 it('rejects cancellation during setup and ignores late events after stop', async () => {
   const pending = service.start('secret');

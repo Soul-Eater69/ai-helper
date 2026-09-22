@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-test('speaker selection gates answers, preserves other speech as context and resets on disconnect', async ({
+test('first speaker is automatic, completed speech answers without an endpoint, and manual pause survives new speech', async ({
   page,
 }) => {
   await page.addInitScript(() => {
@@ -32,8 +32,11 @@ test('speaker selection gates answers, preserves other speech as context and res
           routes.push(request);
           return { action: 'answer' };
         },
-        answer: async (request: unknown) => {
+        answer: async (request: { id: string }) => {
           answers.push(request);
+          listeners.forEach((fn) =>
+            fn({ type: 'answer.done', id: request.id, text: 'I would use a queue for BFS.' }),
+          );
         },
       },
     });
@@ -43,26 +46,38 @@ test('speaker selection gates answers, preserves other speech as context and res
   const final = (id: string, text: string, speaker?: number) =>
     emit({ type: 'transcript.final', id, text, speaker, diarized: true });
   await expect(page.getByLabel('Respond to', { exact: true })).toBeVisible();
+  await emit({ type: 'speech.started', id: 'dg-speech', diarized: true });
   await final('first', 'Can you explain BFS?', 0);
-  await final('second', 'I use a queue.', 1);
-  await page.waitForTimeout(1300);
-  expect(await page.evaluate(() => (window as any).answers.length)).toBe(0);
-  await page.getByLabel('Respond to', { exact: true }).selectOption('0');
+  await emit({ type: 'speech.started', id: 'background-noise', diarized: true });
+  await expect(page.getByLabel('Respond to', { exact: true })).toHaveValue('0');
+  // No endpoint is delivered: finalized text must still reach the answer pipeline.
+  await expect.poll(() => page.evaluate(() => (window as any).answers.length)).toBe(1);
+  await expect(page.locator('.markdown')).toContainText('I would use a queue');
   await final('candidate', 'Why would I use a queue?', 1);
   await page.waitForTimeout(1300);
-  expect(await page.evaluate(() => (window as any).answers.length)).toBe(0);
+  expect(await page.evaluate(() => (window as any).answers.length)).toBe(1);
+  await emit({ type: 'speech.started', id: 'dg-speech', diarized: true });
   await final('question', 'Actually implement DFS.', 0);
-  await expect.poll(() => page.evaluate(() => (window as any).answers.length)).toBe(1);
-  const request = await page.evaluate(() => (window as any).routes[0]);
+  await expect.poll(() => page.evaluate(() => (window as any).answers.length)).toBe(2);
+  const request = await page.evaluate(() => (window as any).routes[1]);
   expect(request.text).toBe('Actually implement DFS.');
   expect(request.recentSpeech.join(' ')).toContain('Other speaker: Why would I use a queue?');
+  await page.getByLabel('Respond to', { exact: true }).selectOption('');
+  await final('paused', 'Explain DFS.', 0);
+  await page.waitForTimeout(1300);
+  expect(await page.evaluate(() => (window as any).answers.length)).toBe(2);
+  await expect(page.getByLabel('Respond to', { exact: true })).toHaveValue('');
+  await page.getByLabel('Respond to', { exact: true }).selectOption('1');
+  await final('switched', 'Explain sorting.', 1);
+  await expect.poll(() => page.evaluate(() => (window as any).answers.length)).toBe(3);
   await final('unknown', 'Do something else.');
   await page.waitForTimeout(1300);
-  expect(await page.evaluate(() => (window as any).answers.length)).toBe(1);
-  await page.screenshot({ path: 'test-results/deepgram-speakers.png' });
-  await emit({ type: 'audio.status', status: 'error', message: 'Disconnected' });
+  expect(await page.evaluate(() => (window as any).answers.length)).toBe(3);
+  await emit({ type: 'audio.status', status: 'connecting' });
   await expect(page.getByLabel('Respond to', { exact: true })).toHaveValue('');
-  await expect(page.getByLabel('Respond to', { exact: true }).locator('option')).toHaveCount(1);
+  await final('restart', 'How are you?', 2);
+  await expect(page.getByLabel('Respond to', { exact: true })).toHaveValue('2');
+  await expect.poll(() => page.evaluate(() => (window as any).answers.length)).toBe(4);
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
   await expect(page.getByLabel('Deepgram API key')).toHaveAttribute('type', 'password');
   await expect(page.getByLabel('Deepgram API key')).toHaveValue('');

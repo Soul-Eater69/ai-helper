@@ -69,7 +69,7 @@ export class DeepgramTranscriptionService {
     const finishSpeech = () => {
       if (!speechActive) return;
       speechActive = false;
-      this.emit({ type: 'speech.skipped', id: speechId });
+      this.emit({ type: 'speech.skipped', id: speechId, diarized: true });
     };
     return new Promise<void>((resolve, reject) => {
       this.rejectStart = reject;
@@ -127,7 +127,7 @@ export class DeepgramTranscriptionService {
           return;
         }
         if (event.type === 'SpeechStarted') {
-          if (!speechActive) this.emit({ type: 'speech.started', id: speechId });
+          if (!speechActive) this.emit({ type: 'speech.started', id: speechId, diarized: true });
           speechActive = true;
           return;
         }

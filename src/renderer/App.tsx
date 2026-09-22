@@ -70,6 +70,13 @@ export default function App() {
         {work.settings.transcriptionProvider === 'deepgram' && (
           <div className="speaker-picker">
             <label htmlFor="response-speaker">Respond to</label>
+            <p className="field-help" role="status">
+              {!work.settings.autoAnswer
+                ? 'Automatic answers are off. Enable them in Settings.'
+                : work.selectedSpeaker === null
+                  ? 'Waiting for the first voice, or manually paused.'
+                  : `Responding to Speaker ${work.selectedSpeaker + 1}`}
+            </p>
             <select
               id="response-speaker"
               value={work.selectedSpeaker ?? ''}
@@ -77,7 +84,7 @@ export default function App() {
                 work.selectSpeaker(e.target.value === '' ? null : Number(e.target.value))
               }
             >
-              <option value="">Choose a speaker — auto answers paused</option>
+              <option value="">Auto answers paused</option>
               {work.speakers.map((speaker) => (
                 <option key={speaker} value={speaker}>
                   Speaker {speaker + 1}
@@ -85,7 +92,7 @@ export default function App() {
               ))}
             </select>
             <p className="field-help">
-              Match a label to the person you want answers for. Reselect after restarting.
+              The first voice is selected automatically. Change it if needed.
             </p>
           </div>
         )}

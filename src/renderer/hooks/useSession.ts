@@ -32,6 +32,7 @@ export function useSession() {
   const [hasDeepgramKey, setHasDeepgramKey] = useState(false);
   const [selectedSpeaker, setSelectedSpeaker] = useState<number | null>(null);
   const selectedSpeakerRef = useRef<number | null>(null);
+  const autoSelectSpeaker = useRef(true);
   const [speakers, setSpeakers] = useState<number[]>([]);
   const [context, setContext] = useState('');
   const [doc, setDoc] = useState(createDocument(INITIAL_CODE));
@@ -220,9 +221,14 @@ export function useSession() {
           setSpeechStatus('');
         }
       } else if (event.type === 'speech.started') {
-        if (current.current.settings.autoAnswer) speechQueue.current?.started(event.id);
+        if (current.current.settings.autoAnswer) {
+          // Deepgram emits finalized segments separately from its optional VAD endpoints.
+          // Never lock those segments behind a start ID that may have no matching end.
+          if (!event.diarized) speechQueue.current?.started(event.id);
+        }
       } else if (event.type === 'speech.skipped') {
-        if (current.current.settings.autoAnswer) speechQueue.current?.final('', event.id);
+        if (current.current.settings.autoAnswer && !event.diarized)
+          speechQueue.current?.final('', event.id);
       } else if (event.type === 'transcript.partial') {
         setPartial(event.text);
         if (current.current.settings.autoAnswer) speechQueue.current?.partial();
@@ -232,6 +238,14 @@ export function useSession() {
           [...items.filter((item) => item.id !== event.id), event].slice(-100),
         );
         if (event.diarized) {
+          if (event.speaker !== undefined && autoSelectSpeaker.current) {
+            autoSelectSpeaker.current = false;
+            selectedSpeakerRef.current = event.speaker;
+            setSelectedSpeaker(event.speaker);
+            setNotice(
+              `Automatically responding to Speaker ${event.speaker + 1}. Change Respond to if needed.`,
+            );
+          }
           if (event.speaker !== undefined)
             setSpeakers((items) =>
               items.includes(event.speaker!)
@@ -262,6 +276,7 @@ export function useSession() {
         if (['stopped', 'error', 'reconnecting', 'connecting'].includes(event.status)) {
           speechQueue.current?.stop();
           selectedSpeakerRef.current = null;
+          autoSelectSpeaker.current = true;
           setSelectedSpeaker(null);
           setSpeakers([]);
           setPartial('');
@@ -382,6 +397,7 @@ export function useSession() {
     selectedSpeaker,
     speakers,
     selectSpeaker: (speaker: number | null) => {
+      autoSelectSpeaker.current = false;
       selectedSpeakerRef.current = speaker;
       setSelectedSpeaker(speaker);
       speechQueue.current?.stop(true);
