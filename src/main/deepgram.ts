@@ -65,6 +65,12 @@ export class DeepgramTranscriptionService {
     const session = randomUUID();
     const speechId = `${session}:speech`;
     let deliveredUntil = -1;
+    let speechActive = false;
+    const finishSpeech = () => {
+      if (!speechActive) return;
+      speechActive = false;
+      this.emit({ type: 'speech.skipped', id: speechId });
+    };
     return new Promise<void>((resolve, reject) => {
       this.rejectStart = reject;
       const fail = (message: string) => {
@@ -121,11 +127,12 @@ export class DeepgramTranscriptionService {
           return;
         }
         if (event.type === 'SpeechStarted') {
-          this.emit({ type: 'speech.started', id: speechId });
+          if (!speechActive) this.emit({ type: 'speech.started', id: speechId });
+          speechActive = true;
           return;
         }
         if (event.type === 'UtteranceEnd') {
-          this.emit({ type: 'speech.skipped', id: speechId });
+          finishSpeech();
           return;
         }
         const parsed = resultSchema.safeParse(event);
@@ -134,7 +141,7 @@ export class DeepgramTranscriptionService {
         const alternative = result.channel.alternatives[0];
         if (!result.is_final) {
           // Interim text replaces the preview; it never enters the answer queue.
-          if (result.start + result.duration > deliveredUntil)
+          if (alternative.transcript.trim() && result.start + result.duration > deliveredUntil)
             this.emit({ type: 'transcript.partial', id: speechId, text: alternative.transcript });
           return;
         }
@@ -150,6 +157,7 @@ export class DeepgramTranscriptionService {
           }
           if (!alternative.words.length && alternative.transcript.trim())
             groups.push({ text: alternative.transcript, start: result.start });
+          if (groups.length) speechActive = true;
           for (const [index, group] of groups.entries())
             this.emit({
               type: 'transcript.final',
@@ -160,7 +168,7 @@ export class DeepgramTranscriptionService {
             });
           deliveredUntil = end;
         }
-        if (result.speech_final) this.emit({ type: 'speech.skipped', id: speechId });
+        if (result.speech_final) finishSpeech();
       });
     });
   }

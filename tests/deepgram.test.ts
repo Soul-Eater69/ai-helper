@@ -1,3 +1,4 @@
+import { SpeechQueue } from '../src/renderer/speech-queue';
 import { EventEmitter } from 'node:events';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import type { AppEvent } from '../src/shared/contracts';
@@ -127,4 +128,67 @@ it('fails closed on disconnect and allows a new independent session', async () =
   await pending;
   result(sockets[1], [word('New', 0, 0)]);
   expect(events.at(-2)).toMatchObject({ type: 'transcript.final', text: 'New' });
+});
+
+it('answers after a completed turn even while empty silence results keep arriving', async () => {
+  vi.useFakeTimers();
+  try {
+    const answer = vi.fn();
+    const queue = new SpeechQueue(
+      async () => ({ action: 'answer' }),
+      answer,
+      () => {},
+      () => {},
+    );
+    service = new DeepgramTranscriptionService((event) => {
+      if (event.type === 'speech.started') queue.started(event.id);
+      if (event.type === 'speech.skipped') queue.final('', event.id);
+      if (event.type === 'transcript.partial') queue.partial();
+      if (event.type === 'transcript.final') queue.final(event.text, event.id);
+    });
+    const socket = await start();
+    socket.emit('message', JSON.stringify({ type: 'SpeechStarted' }));
+    result(socket, [word('Explain BFS?', 0, 0)]);
+    for (let i = 0; i < 6; i++) {
+      await vi.advanceTimersByTimeAsync(500);
+      result(socket, [], { start: 2 + i, duration: 0.5, is_final: false, speech_final: false });
+    }
+    expect(answer).toHaveBeenCalledOnce();
+    queue.stop();
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+it('duplicate end events do not cancel an in-flight routing decision', async () => {
+  vi.useFakeTimers();
+  try {
+    const answer = vi.fn();
+    let resolve!: (result: { action: 'answer' }) => void;
+    const queue = new SpeechQueue(
+      () =>
+        new Promise((r) => {
+          resolve = r;
+        }),
+      answer,
+      () => {},
+      () => {},
+    );
+    service = new DeepgramTranscriptionService((event) => {
+      if (event.type === 'speech.started') queue.started(event.id);
+      if (event.type === 'speech.skipped') queue.final('', event.id);
+      if (event.type === 'transcript.final') queue.final(event.text, event.id);
+    });
+    const socket = await start();
+    socket.emit('message', JSON.stringify({ type: 'SpeechStarted' }));
+    result(socket, [word('Explain BFS?', 0, 0)]);
+    await vi.advanceTimersByTimeAsync(1100);
+    socket.emit('message', JSON.stringify({ type: 'UtteranceEnd', last_word_end: 0.4 }));
+    resolve({ action: 'answer' });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(answer).toHaveBeenCalledOnce();
+    queue.stop();
+  } finally {
+    vi.useRealTimers();
+  }
 });
