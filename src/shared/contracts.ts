@@ -71,7 +71,6 @@ export const settingsSchema = z
       .max(100)
       .regex(/^[a-zA-Z0-9_.:-]*$/)
       .default('gpt-4o-mini'),
-    transcriptionProvider: z.enum(['openai', 'deepgram']).default('openai'),
     transcriptionModel: z
       .string()
       .trim()
@@ -163,10 +162,10 @@ export type AppEvent =
   | { type: 'answer.done'; id: string; text: string }
   | { type: 'answer.error'; id: string; message: string }
   | { type: 'answer.cancelled'; id: string }
-  | { type: 'speech.started'; id: string; diarized?: boolean }
-  | { type: 'speech.skipped'; id: string; diarized?: boolean }
+  | { type: 'speech.started'; id: string }
+  | { type: 'speech.skipped'; id: string }
   | { type: 'transcript.partial'; id: string; text: string }
-  | { type: 'transcript.final'; id: string; text: string; speaker?: number; diarized?: boolean }
+  | { type: 'transcript.final'; id: string; text: string }
   | {
       type: 'audio.status';
       status: 'connecting' | 'ready' | 'reconnecting' | 'stopped' | 'error';
@@ -174,12 +173,10 @@ export type AppEvent =
     };
 export interface DesktopAPI {
   readonly isDesktop: boolean;
-  getSettings(): Promise<{ settings: Settings; hasKey: boolean; hasDeepgramKey?: boolean }>;
+  getSettings(): Promise<{ settings: Settings; hasKey: boolean }>;
   saveSettings(settings: Settings): Promise<void>;
   setKey(key: string): Promise<void>;
   deleteKey(): Promise<void>;
-  setDeepgramKey(key: string): Promise<void>;
-  deleteDeepgramKey(): Promise<void>;
   answer(request: AnswerRequest): Promise<void>;
   cancel(): Promise<void>;
   routeSpeech(request: SpeechRequest): Promise<SpeechDecision>;

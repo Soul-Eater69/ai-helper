@@ -7,8 +7,6 @@ export default function SettingsDialog({ work, close }: { work: Workspace; close
   const ref = useRef<HTMLDialogElement>(null);
   const [draft, setDraft] = useState(structuredClone(work.settings));
   const [key, setKey] = useState('');
-  const [deepgramKey, setDeepgramKey] = useState('');
-  const [hasDeepgramKey, setHasDeepgramKey] = useState(work.hasDeepgramKey);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [hasKey, setHasKey] = useState(work.hasKey);
@@ -28,10 +26,6 @@ export default function SettingsDialog({ work, close }: { work: Workspace; close
       if (key.trim()) {
         await desktopAPI.setKey(key.trim());
         setKey('');
-      }
-      if (deepgramKey.trim()) {
-        await desktopAPI.setDeepgramKey(deepgramKey.trim());
-        setDeepgramKey('');
       }
       await desktopAPI.saveSettings(validated);
       await work.refreshSettings();
@@ -110,64 +104,6 @@ export default function SettingsDialog({ work, close }: { work: Workspace; close
               </button>
             )}
           </div>
-          <label htmlFor="transcription-provider">Audio transcription</label>
-          <select
-            id="transcription-provider"
-            value={draft.transcriptionProvider}
-            onChange={(e) =>
-              setDraft({ ...draft, transcriptionProvider: e.target.value as 'openai' | 'deepgram' })
-            }
-          >
-            <option value="openai">OpenAI — existing transcription</option>
-            <option value="deepgram">Deepgram — speaker labels</option>
-          </select>
-          {draft.transcriptionProvider === 'deepgram' && (
-            <>
-              <label htmlFor="deepgram-key">
-                Deepgram API key {hasDeepgramKey && <span className="pill">Stored securely</span>}
-              </label>
-              <div className="input-action">
-                <input
-                  id="deepgram-key"
-                  type="password"
-                  autoComplete="off"
-                  value={deepgramKey}
-                  disabled={!desktopAPI.isDesktop || busy}
-                  onChange={(e) => setDeepgramKey(e.target.value)}
-                  placeholder={
-                    hasDeepgramKey
-                      ? 'Leave blank to keep your saved key'
-                      : 'Paste your Deepgram key'
-                  }
-                />
-                {hasDeepgramKey && (
-                  <button
-                    disabled={busy}
-                    onClick={async () => {
-                      setBusy(true);
-                      try {
-                        await desktopAPI.deleteDeepgramKey();
-                        setHasDeepgramKey(false);
-                        setDeepgramKey('');
-                        await work.refreshSettings();
-                      } catch {
-                        setError('Could not delete the Deepgram key.');
-                      } finally {
-                        setBusy(false);
-                      }
-                    }}
-                  >
-                    Remove Deepgram key
-                  </button>
-                )}
-              </div>
-              <p className="field-help">
-                Audio goes to Deepgram Nova-3 for transcription and speaker labels. Text goes to
-                OpenAI for answers. Select a speaker in the transcript after starting. Speaker
-                labels can be wrong; review them. Restart listening after changing providers.
-              </p>
-            </>
-          )}
           <div className="field-grid">
             <div>
               <label htmlFor="answer-model">Answer model</label>
@@ -190,7 +126,6 @@ export default function SettingsDialog({ work, close }: { work: Workspace; close
               <label htmlFor="transcription-model">Transcription model</label>
               <input
                 id="transcription-model"
-                disabled={draft.transcriptionProvider === 'deepgram'}
                 value={draft.transcriptionModel}
                 onChange={(e) => setDraft({ ...draft, transcriptionModel: e.target.value })}
               />
@@ -199,8 +134,8 @@ export default function SettingsDialog({ work, close }: { work: Workspace; close
           <p className="field-help">
             The routing model only decides whether speech deserves an answer, so a small fast model
             is enough. If your account cannot use it, the answer model is used instead. Use model
-            IDs available to your API account. Changing transcription settings stops listening.
-            Start again to use the new settings.
+            IDs available to your API account. Changes to transcription apply the next time you
+            start listening.
           </p>
         </section>
         <section>

@@ -113,28 +113,3 @@ Open **Practice tools** below the latest response for **Explain approach**, **Dr
 Settings now includes a candidate name and a structured **Story bank**. Add up to 20 real experiences with Situation, Task, Action, Result and Learning, optional Leadership Principle tags and keywords, and failure/disagreement flags. Existing free-text background remains available. The app selects up to two relevant stories locally and resolves their text in the main process before sending the answer request. Common follow-ups can reuse the previous question's story facts. Selection uses vocabulary matching and may miss unusual phrasing; it is not semantic retrieval and does not guarantee story variety. Give specific context when needed.
 
 Your name, background and selected story facts are sent to OpenAI when generating answers and are stored in the encrypted local settings. No real experience data is included in this repository. Missing facts must be requested rather than invented. Spoken guidance favors natural first-person paragraphs; coding guidance includes short narration beats in writing order.
-
-### Deepgram speaker labels
-
-In Settings, choose **Audio transcription → Deepgram — speaker labels**, enter your
-Deepgram API key, and save. Keep your OpenAI key for answer generation and routing.
-Both keys are stored in the OS-encrypted vault; saved keys are never returned to the UI.
-Changing transcription settings stops listening; start it again afterward.
-
-Start listening. The first labeled voice is selected automatically, including its first
-question. This is a default, not recognition of the interviewer role. Use **Respond to**
-to change speakers or pause automatic answers. Speech without a label is held for review.
-Click any transcript phrase to use it manually. Other speakers remain conversational
-context without triggering answers themselves. Manual selection applies to future speech; restarting enables first-speaker selection again.
-
-Deepgram Nova-3 receives one 24 kHz mono PCM stream and returns words with speaker
-labels. Interim text updates the preview; only finalized segments enter routing.
-Repeated finalized audio windows are discarded by timestamp, not by matching text,
-so deliberate repetitions and corrections are preserved. Nothing records raw audio.
-A disconnect stops listening rather than silently reusing potentially changed speaker
-IDs; restart to auto-select the first voice again. Existing OpenAI transcription remains an option.
-
-Speaker labels are estimates, not verified identities. This does not separate audio
-tracks or recover words missed during overlapping speech. Tests use mocked provider
-responses and browser events; real Windows capture, account access, latency and
-speaker accuracy must be checked with consenting participants in a live audio test.

@@ -7,7 +7,6 @@ import { Vault } from './storage';
 import { AssistantService, openAIProvider } from './assistant';
 import { SpeechService } from './speech';
 import { TranscriptionService } from './transcription';
-import { DeepgramTranscriptionService } from './deepgram';
 import {
   settingsSchema,
   answerRequestSchema,
@@ -18,7 +17,7 @@ import {
 
 let window: BrowserWindow | undefined;
 let assistant: AssistantService;
-let transcription: TranscriptionService | DeepgramTranscriptionService;
+let transcription: TranscriptionService;
 let captureGrant: { source: 'system' | 'microphone'; expires: number } | undefined;
 let startEpoch = 0;
 const answerGate = new RequestGate();
@@ -81,33 +80,9 @@ async function boot(): Promise<void> {
   handle('settings:get', async () => ({
     settings: await vault.settings(),
     hasKey: !!(await vault.key()),
-    hasDeepgramKey: !!(await vault.deepgramKey()),
   }));
-  handle('settings:save', async (input) => {
-    const next = settingsSchema.parse(input);
-    const previous = await vault.settings();
-    if (
-      next.transcriptionProvider !== previous.transcriptionProvider ||
-      next.transcriptionModel !== previous.transcriptionModel
-    ) {
-      startEpoch++;
-      captureGrant = undefined;
-      transcription.stop();
-      cancelSpeech();
-    }
-    await vault.saveSettings(next);
-  });
+  handle('settings:save', (input) => vault.saveSettings(settingsSchema.parse(input)));
   handle('key:set', (input) => vault.setKey(z.string().trim().min(10).max(500).parse(input)));
-  handle('deepgram-key:set', (input) =>
-    vault.setDeepgramKey(z.string().trim().min(10).max(500).parse(input)),
-  );
-  handle('deepgram-key:delete', async () => {
-    startEpoch++;
-    captureGrant = undefined;
-    transcription.stop();
-    cancelSpeech();
-    await vault.setDeepgramKey('');
-  });
   handle('key:delete', async () => {
     cancelSpeech();
     answerGate.cancel();
@@ -149,16 +124,7 @@ async function boot(): Promise<void> {
     if (!key) throw new Error('Add your OpenAI API key in Settings first.');
     const settings = await vault.settings();
     if (epoch !== startEpoch) return;
-    const audioKey =
-      settings.transcriptionProvider === 'deepgram' ? await vault.deepgramKey() : key;
-    if (epoch !== startEpoch) return;
-    if (!audioKey) throw new Error('Add your Deepgram API key in Settings first.');
-    transcription.stop(false);
-    transcription =
-      settings.transcriptionProvider === 'deepgram'
-        ? new DeepgramTranscriptionService(emit)
-        : new TranscriptionService(emit);
-    await transcription.start(audioKey, settings.transcriptionModel);
+    await transcription.start(key, settings.transcriptionModel);
     if (epoch !== startEpoch) return;
     captureGrant = { source, expires: Date.now() + 30000 };
   });

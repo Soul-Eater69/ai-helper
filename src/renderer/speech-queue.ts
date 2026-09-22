@@ -29,9 +29,6 @@ export class SpeechQueue {
     const epoch = this.epoch;
     this.timer = setTimeout(() => void this.decide(epoch), 1100);
   }
-  observe(text: string): void {
-    if (text.trim()) this.recent = [...this.recent, text.slice(-1600)].slice(-12);
-  }
   stop(clearContext = false): void {
     this.partial();
     this.pending = '';

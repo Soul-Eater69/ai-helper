@@ -74,18 +74,36 @@ describe('local vault', () => {
     const vault = new Vault(dir, codec);
     await Promise.all([
       vault.setKey('test-secret'),
-      vault.setDeepgramKey('deepgram-secret'),
       vault.saveSettings(settingsSchema.parse({ model: 'my-model' })),
     ]);
     const loaded = new Vault(dir, codec);
     expect(await loaded.key()).toBe('test-secret');
-    expect(await loaded.deepgramKey()).toBe('deepgram-secret');
-    expect((await readFile(join(dir, 'vault.bin'))).toString()).not.toContain('deepgram-secret');
-    await loaded.setDeepgramKey('');
-    expect(await loaded.deepgramKey()).toBe('');
-    expect(await loaded.key()).toBe('test-secret');
     expect((await loaded.settings()).model).toBe('my-model');
     expect((await readFile(join(dir, 'vault.bin'))).toString()).not.toContain('test-secret');
+  });
+  it('loads settings from the removed audio provider without losing the OpenAI key or profile', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'ai-helper-'));
+    await writeFile(
+      join(dir, 'vault.bin'),
+      codec.encrypt(
+        JSON.stringify({
+          key: 'openai-test',
+          deepgramKey: 'obsolete-test',
+          sessions: [],
+          settings: {
+            ...settingsSchema.parse({ profile: 'My project facts' }),
+            transcriptionProvider: 'deepgram',
+          },
+        }),
+      ),
+    );
+    const vault = new Vault(dir, codec);
+    expect(await vault.key()).toBe('openai-test');
+    expect((await vault.settings()).profile).toBe('My project facts');
+    await vault.saveSettings(await vault.settings());
+    const saved = JSON.parse(codec.decrypt(await readFile(join(dir, 'vault.bin'))));
+    expect(saved).not.toHaveProperty('deepgramKey');
+    expect(saved.settings).not.toHaveProperty('transcriptionProvider');
   });
   it('reports damaged storage without silently overwriting it', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'ai-helper-'));

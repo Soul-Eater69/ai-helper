@@ -67,35 +67,6 @@ export default function App() {
         <div className="nav-label transcript-label">
           Transcript <span className={listening ? 'green-dot' : 'neutral-dot'} />
         </div>
-        {work.settings.transcriptionProvider === 'deepgram' && (
-          <div className="speaker-picker">
-            <label htmlFor="response-speaker">Respond to</label>
-            <p className="field-help" role="status">
-              {!work.settings.autoAnswer
-                ? 'Automatic answers are off. Enable them in Settings.'
-                : work.selectedSpeaker === null
-                  ? 'Waiting for the first voice, or manually paused.'
-                  : `Responding to Speaker ${work.selectedSpeaker + 1}`}
-            </p>
-            <select
-              id="response-speaker"
-              value={work.selectedSpeaker ?? ''}
-              onChange={(e) =>
-                work.selectSpeaker(e.target.value === '' ? null : Number(e.target.value))
-              }
-            >
-              <option value="">Auto answers paused</option>
-              {work.speakers.map((speaker) => (
-                <option key={speaker} value={speaker}>
-                  Speaker {speaker + 1}
-                </option>
-              ))}
-            </select>
-            <p className="field-help">
-              The first voice is selected automatically. Change it if needed.
-            </p>
-          </div>
-        )}
         <div className="transcript-list">
           {work.transcript.length === 0 && !work.partial ? (
             <div className="transcript-empty">
@@ -110,13 +81,7 @@ export default function App() {
                   onClick={() => work.setQuestion(item.text)}
                   title="Use this transcript as your question"
                 >
-                  <span>
-                    {item.diarized
-                      ? item.speaker === undefined
-                        ? 'SPEAKER UNKNOWN'
-                        : `SPEAKER ${item.speaker + 1}`
-                      : `PHRASE ${String(i + 1).padStart(2, '0')}`}
-                  </span>
+                  <span>PHRASE {String(i + 1).padStart(2, '0')}</span>
                   <p>{item.text}</p>
                 </button>
               ))}
