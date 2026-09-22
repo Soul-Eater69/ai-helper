@@ -5,10 +5,11 @@ import AnswerContent from '../src/renderer/components/AnswerContent';
 import { splitAnswer } from '../src/shared/revision';
 import { treeTrace, traceFence } from './fixtures/visual-traces';
 
-it('renders a model trace as an interactive dry run instead of raw JSON', () => {
+it('renders a model trace as copyable notes instead of raw JSON', () => {
   const html = renderToStaticMarkup(createElement(AnswerContent, { text: traceFence(treeTrace) }));
   expect(html).toContain('aria-label="Visual dry run: Maximum tree depth"');
-  expect(html).toContain('Next step');
+  expect(html).toContain('Copy notes for step 4');
+  expect(html).toContain('Walkthrough');
   expect(html).toContain('I need the deeper side');
   expect(html).not.toContain('&quot;version&quot;');
 });

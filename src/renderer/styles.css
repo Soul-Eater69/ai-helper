@@ -1802,3 +1802,59 @@ svg {
   min-height: 120px;
   flex-shrink: 0;
 }
+
+/* Copyable whiteboard notes keep the action and explanation together. */
+.trace-view-switch {
+  display: flex;
+  gap: 6px;
+  margin-top: 12px;
+}
+.trace-view-switch button {
+  padding: 6px 12px;
+  border: 1px solid #dce2e9;
+  border-radius: 8px;
+  background: white;
+}
+.trace-view-switch button[aria-pressed='true'] {
+  background: #eef3fb;
+  border-color: #8ba8d4;
+  color: #234c84;
+}
+.trace-notebook {
+  padding: 16px 20px;
+}
+.trace-notebook-map {
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e6e9ed;
+}
+.trace-notebook-step {
+  padding: 16px 0;
+  border-bottom: 1px solid #e6e9ed;
+}
+.trace-note-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.markdown .trace-notebook-write {
+  margin: 6px 0 12px;
+  padding: 12px 14px;
+  background: #f5f7fa;
+  border: 1px solid #e5e9ee;
+  border-radius: 9px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 13px;
+  line-height: 1.7;
+}
+.markdown .trace-notebook-say {
+  margin: 6px 0 0;
+  font-size: 15px;
+  line-height: 1.65;
+}
+@container (max-width: 450px) {
+  .trace-notebook {
+    padding: 12px;
+  }
+}

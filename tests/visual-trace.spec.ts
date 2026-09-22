@@ -49,6 +49,38 @@ async function ask(page: Page, question: string) {
   await page.getByRole('button', { name: 'Generate answer', exact: true }).click();
 }
 
+test('dry runs open as copyable notes with all steps and a compact diagram', async ({ page }) => {
+  await page.addInitScript(() =>
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText: async (text: string) => Object.assign(window, { copiedTrace: text }) },
+    }),
+  );
+  await supplyAnswers(page, [traceFence(treeTrace)]);
+  await ask(page, 'Walk through tree depth');
+  const trace = page.getByRole('region', {
+    name: 'Visual dry run: Maximum tree depth',
+    exact: true,
+  });
+  await expect(trace.locator('.trace-notebook-step')).toHaveCount(4);
+  await expect(trace.locator('.trace-notebook-step').last()).toContainText(
+    'return 1 + max(1, 1) = 2',
+  );
+  expect((await trace.locator('svg.trace-graph').boundingBox())!.width).toBeLessThanOrEqual(400);
+  await trace.getByRole('button', { name: 'Copy notes for step 2', exact: true }).click();
+  await expect
+    .poll(() => page.evaluate(() => (window as unknown as { copiedTrace: string }).copiedTrace))
+    .toContain('1 + max(0, 0) = 1');
+  await trace.getByRole('button', { name: 'Walkthrough', exact: true }).click();
+  await trace.getByRole('button', { name: 'Next step' }).click();
+  await trace.getByRole('button', { name: 'Notes', exact: true }).click();
+  await trace.getByRole('button', { name: 'Walkthrough', exact: true }).click();
+  await expect(trace.locator('.trace-step-label')).toHaveText('Step 2 of 4');
+  await trace.getByRole('button', { name: 'Notes', exact: true }).click();
+  await trace.locator('.trace-notebook-step').last().scrollIntoViewIfNeeded();
+  await expect(trace.locator('.trace-notebook-say').last()).toBeVisible();
+  await page.screenshot({ path: 'test-results/dry-run-notebook.png' });
+});
+
 test('tree calls and returns stay synchronized with speech, notes and independent conversation history', async ({
   page,
 }) => {
@@ -59,6 +91,7 @@ test('tree calls and returns stay synchronized with speech, notes and independen
     exact: true,
   });
   await expect(tree).toBeVisible();
+  await tree.getByRole('button', { name: 'Walkthrough', exact: true }).click();
   await expect(tree.getByRole('button', { name: 'Back', exact: true })).toBeDisabled();
   await tree.getByRole('button', { name: 'Next step' }).click();
   await expect(tree.locator('.trace-speech')).toContainText('Both children of 9 are empty');
@@ -76,6 +109,7 @@ test('tree calls and returns stay synchronized with speech, notes and independen
   await expect(tree.locator('.trace-node.active')).toHaveAttribute('aria-label', '20: depth 1');
   await ask(page, 'Show a DP dry run.');
   const dp = page.getByRole('region', { name: 'Visual dry run: Climbing stairs', exact: true });
+  await dp.getByRole('button', { name: 'Walkthrough', exact: true }).click();
   await expect(dp.locator('.trace-step-label')).toHaveText('Step 1 of 2');
   await expect(tree.locator('.trace-step-label')).toHaveText('Step 3 of 4');
   await dp.getByRole('button', { name: 'Next step' }).click();
@@ -125,6 +159,7 @@ test('array marks, graph traversals and grid values render without executing mod
   };
   await supplyAnswers(page, [traceFence(array), traceFence(graph), traceFence(grid)]);
   await ask(page, 'Show an array trace');
+  await page.getByRole('button', { name: 'Walkthrough', exact: true }).click();
   await expect(page.locator('.trace-cell.removed')).toHaveCount(1);
   await expect(page.locator('.trace-collections')).toContainText('Empty');
   await ask(page, 'Show graph traversal');
@@ -132,6 +167,7 @@ test('array marks, graph traversals and grid values render without executing mod
     name: 'Visual dry run: Graph traversal',
     exact: true,
   });
+  await diagram.getByRole('button', { name: 'Walkthrough', exact: true }).click();
   await diagram.getByRole('button', { name: 'Next step' }).click();
   await expect(diagram.locator('.trace-edge.active')).toHaveCount(1);
   await diagram.evaluate((element) => {
@@ -210,6 +246,7 @@ test('finishing a streamed answer preserves the step already selected in its com
     name: 'Visual dry run: Maximum tree depth',
     exact: true,
   });
+  await diagram.getByRole('button', { name: 'Walkthrough', exact: true }).click();
   await diagram.getByRole('button', { name: 'Next step' }).click();
   await expect(diagram.locator('.trace-step-label')).toHaveText('Step 2 of 4');
   await page.evaluate(() =>

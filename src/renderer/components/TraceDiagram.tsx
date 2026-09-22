@@ -19,7 +19,7 @@ export default function TraceDiagram({ trace, step }: { trace: VisualTrace; step
   const rows = Math.max(1, ...trace.nodes.map((node) => node.row + 1));
   const values = new Map(step.values.map((value) => [value.id, value.value]));
   const graph = trace.kind === 'tree' || trace.kind === 'graph';
-  const diagramWidth = Math.max(width, columns * 86);
+  const diagramWidth = Math.max(Math.min(width, columns * 120), columns * 86);
   const point = (id: string) => {
     const node = trace.nodes.find((n) => n.id === id)!;
     return { x: ((node.column + 0.5) * diagramWidth) / columns, y: node.row * 106 + 50 };
@@ -89,10 +89,7 @@ export default function TraceDiagram({ trace, step }: { trace: VisualTrace; step
                 className={`trace-node ${nodeState(node.id, step)}`}
                 aria-label={`${node.label}${value ? `: ${value}` : ''}`}
               >
-                <title>
-                  {node.label}
-                  {value ? `: ${value}` : ''}
-                </title>
+                <title>{`${node.label}${value ? `: ${value}` : ''}`}</title>
                 <circle cx={x} cy={y} r={23} />
                 {step.done.includes(node.id) && (
                   <text className="trace-check" x={x + 18} y={y - 19}>
