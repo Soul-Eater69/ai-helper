@@ -30,9 +30,10 @@ test('legacy settings gain story fields and multiple source blocks remain review
           listeners.add(fn);
           return () => listeners.delete(fn);
         },
-        answer: async (request: { id: string }) => {
-          const text =
-            'Earlier illustration\n```python\nprint("example")\n```\nFinal implementation\n```python\nprint("final")\n```\n```text\nexpected output: final\n```';
+        answer: async (request: { id: string; question: string }) => {
+          const text = request.question.includes('another question')
+            ? 'Okay, I need a valid order of all courses.'
+            : 'Earlier illustration\n```python\nprint("example")\n```\nFinal implementation\n```python\nprint("final")\n```\n```text\nexpected output: final\n```';
           setTimeout(
             () => listeners.forEach((fn) => fn({ type: 'answer.done', id: request.id, text })),
             10,
@@ -73,6 +74,18 @@ test('legacy settings gain story fields and multiple source blocks remain review
   await page.getByRole('button', { name: 'Accept changes' }).click();
   await expect(page.getByTestId('working-editor')).toContainText('print("final")');
   await expect(page.getByTestId('working-editor')).not.toContainText('print("example")');
+  await page.getByRole('button', { name: 'Close code workspace' }).click();
+  await expect(page.getByRole('region', { name: 'Code workspace' })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Show code', exact: true }).click();
+  await expect(page.getByTestId('working-editor')).toContainText('print("final")');
+  await page
+    .locator('#question')
+    .fill("Okay, let's get to another question. Return a valid course ordering.");
+  await page.getByRole('button', { name: 'Generate answer' }).click();
+  await expect(page.locator('.response-status').last()).toContainText('Ready');
+  await expect(page.getByRole('region', { name: 'Code workspace' })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Show code', exact: true }).click();
+  await expect(page.getByTestId('working-editor')).toContainText('print("final")');
 });
 
 test('code history is read-only and keeps pending proposals separate', async ({ page }) => {

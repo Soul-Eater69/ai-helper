@@ -31,7 +31,7 @@ test('spoken guidance and dry-run state are visually separate and fit the panel'
         },
         answer: async (request: { id: string }) => {
           const text =
-            '> Yeah, checking first means I can only match an earlier element. That handles two separate threes correctly.\n\n## Algorithm\n\n```pseudocode\nFOR each value\n    IF complement is in seen\n        RETURN matching indices\n    STORE value and index\n```\n\n## Dry run\n\n| Step | Write / state | Say aloud |\n| --- | --- | --- |\n| 1 | `nums = [3, 3], target = 6, seen = {}` | I start with an empty map. |\n| 2 | `i = 0, need = 3` → store `{3: 0}` | There is no earlier three, so I save this one. |\n| 3 | `i = 1, need = 3` → return `[0, 1]` | Now the earlier three gives me a pair of different indices. |\n\n## Complexity\n\nExpected time: **O(n)** · Extra space: **O(n)**';
+            '> Yeah, checking first means I can only match an earlier element. That handles two separate threes correctly.\n\n## Empty heading\n\n## Algorithm\n\n```pseudocode\nFOR each value\n    IF complement is in seen\n        RETURN matching indices\n    STORE value and index\n```\n\n## Dry run\n\n| Step | Write / state | Say aloud |\n| --- | --- | --- |\n| 1 | `nums = [3, 3], target = 6, seen = {}` | I start with an empty map. |\n| 2 | `i = 0, need = 3` → store `{3: 0}` | There is no earlier three, so I save this one. |\n| 3 | `i = 1, need = 3` → return `[0, 1]` | Now the earlier three gives me a pair of different indices. |\n\n## Complexity\n\n**Time:** **O(n)** — one pass.\n\n**Space:** **O(n)** — saved values.';
           setTimeout(
             () => listeners.forEach((fn) => fn({ type: 'answer.done', id: request.id, text })),
             10,
@@ -41,14 +41,17 @@ test('spoken guidance and dry-run state are visually separate and fit the panel'
     });
   });
   await page.goto('/');
-  await page.getByRole('button', { name: 'Pin code', exact: true }).click();
+  await page.getByRole('button', { name: 'Show code', exact: true }).click();
   await page.locator('#question').fill('Why does checking first handle duplicates?');
   await page.getByRole('button', { name: 'Generate answer', exact: true }).click();
   const speech = page.getByTestId('spoken-guidance');
   await expect(speech).toContainText('Say this');
   await expect(speech).toContainText('Yeah, checking first');
   await expect(page.getByTestId('pseudocode')).toContainText('RETURN matching indices');
+  await expect(page.getByRole('heading', { name: 'Empty heading' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Accept changes' })).toHaveCount(0);
+  await expect(page.locator('.complexity-metric')).toHaveCount(2);
+  await expect(page.locator('.complexity-metric').first()).toContainText('Time: O(n)');
   const table = page.getByRole('table');
   await expect(table).toBeVisible();
   await expect(table.getByRole('row')).toHaveCount(4);
@@ -59,6 +62,7 @@ test('spoken guidance and dry-run state are visually separate and fit the panel'
     }),
   ).toBeVisible();
   await expect(page.locator('.markdown')).not.toContainText('| --- |');
+  await page.locator('.complexity-metric').last().scrollIntoViewIfNeeded();
   await page.screenshot({ path: 'test-results/answer-guidance.png' });
   await page.locator('#question').fill('Explain the complexity next');
   await page.getByRole('button', { name: 'Generate answer', exact: true }).click();

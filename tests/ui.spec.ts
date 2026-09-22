@@ -22,7 +22,7 @@ test('one workspace and editable prompts work', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Interview session' })).toBeVisible();
   await expect(page.getByRole('navigation', { name: 'Interview modes' })).toHaveCount(0);
-  await page.getByRole('button', { name: 'Pin code', exact: true }).click();
+  await page.getByRole('button', { name: 'Show code', exact: true }).click();
   await expect(page.getByTestId('working-editor')).toBeVisible();
   await page.getByRole('button', { name: 'Hide sidebar' }).click();
   await expect(page.getByRole('button', { name: 'Settings', exact: true })).toBeHidden();

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Braces,
   BrainCircuit,
@@ -17,6 +17,7 @@ import {
   X,
 } from 'lucide-react';
 import { useSession, INITIAL_CODE } from './hooks/useSession';
+import { startsNewProblem } from '../shared/conversation';
 import { desktopAPI } from './bridge';
 import CodeWorkspace from './components/CodeWorkspace';
 import AnswerPanel from './components/AnswerPanel';
@@ -27,8 +28,17 @@ export default function App() {
   const [source, setSource] = useState<'system' | 'microphone'>('system');
   const [historyOpen, setHistoryOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [codePinned, setCodePinned] = useState(false);
-  const showCode = codePinned || !!work.proposal || work.doc.code !== INITIAL_CODE;
+  const [codeVisibility, setCodeVisibility] = useState<boolean | null>(null);
+  const latestQuestion = work.turns.at(-1)?.question;
+  const latestTurnId = work.turns.at(-1)?.id;
+  useEffect(() => {
+    if (work.proposal) setCodeVisibility(null);
+  }, [work.proposal]);
+  useEffect(() => {
+    if (!latestTurnId) setCodeVisibility(null);
+    else if (latestQuestion && startsNewProblem(latestQuestion)) setCodeVisibility(false);
+  }, [latestTurnId, latestQuestion]);
+  const showCode = codeVisibility ?? (!!work.proposal || work.doc.code !== INITIAL_CODE);
   const listening = ['ready', 'connecting', 'reconnecting'].includes(work.audioStatus);
   return (
     <div className={`app-shell ${sidebarOpen ? '' : 'sidebar-collapsed'}`}>
@@ -177,11 +187,11 @@ export default function App() {
           <div className="adaptive-controls">
             <button
               className="subtle"
-              aria-pressed={codePinned}
-              onClick={() => setCodePinned(!codePinned)}
+              aria-expanded={showCode}
+              onClick={() => setCodeVisibility(!showCode)}
             >
               <Code2 size={15} />
-              {codePinned ? 'Unpin code' : 'Pin code'}
+              {showCode ? 'Hide code' : 'Show code'}
             </button>
           </div>
           <div className="audio-controls">
@@ -238,7 +248,7 @@ export default function App() {
         )}
         <div className={`workbench ${showCode ? '' : 'conversation-only'}`}>
           <AnswerPanel work={work} openSettings={() => setSettingsOpen(true)} />
-          {showCode && <CodeWorkspace work={work} />}
+          {showCode && <CodeWorkspace work={work} close={() => setCodeVisibility(false)} />}
         </div>
         <footer className="statusbar">
           <span>

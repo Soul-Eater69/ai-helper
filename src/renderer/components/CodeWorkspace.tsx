@@ -4,7 +4,7 @@ import { CodeEditor, CodeDiff } from './MonacoSurface';
 import { Check, Copy, FileCode2, GitCompareArrows, Undo2, X } from 'lucide-react';
 import type { Workspace } from '../hooks/useSession';
 import { languages } from '../../shared/contracts';
-export default function CodeWorkspace({ work }: { work: Workspace }) {
+export default function CodeWorkspace({ work, close }: { work: Workspace; close: () => void }) {
   const [view, setView] = useState<'editor' | 'diff' | 'history'>('editor');
   useEffect(() => {
     setView((current) => (current === 'history' ? current : work.proposal ? 'diff' : 'editor'));
@@ -32,6 +32,14 @@ export default function CodeWorkspace({ work }: { work: Workspace }) {
             <option key={lang}>{lang}</option>
           ))}
         </select>
+        <button
+          className="icon-button"
+          aria-label="Close code workspace"
+          title="Hide code without discarding it"
+          onClick={close}
+        >
+          <X size={16} />
+        </button>
       </div>
       <div className="code-tabs">
         <button className={view === 'editor' ? 'selected' : ''} onClick={() => setView('editor')}>

@@ -64,3 +64,10 @@ Pseudocode uses the `pseudocode` fence tag and stays in the answer panel. It is 
 planning aid, not executable source or an accepted workspace revision. Actual
 implementation still requires authorization. Short spoken explanations and trace
 tables should not repeat all the pseudocode steps aloud.
+
+Approach explanations use a short idea followed by concrete steps and a bottleneck.
+Time and space appear on separate highlighted lines with their derivations. Complete
+problem statements do not need variant confirmation. An unclear reply does not
+confirm a constraint, and correcting a constraint updates only the affected reasoning.
+Code can be hidden and reopened without losing working code or proposals. Explicit
+new-problem transitions hide the panel; a new implementation proposal opens it again.

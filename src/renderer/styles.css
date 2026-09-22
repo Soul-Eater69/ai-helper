@@ -1322,3 +1322,23 @@ svg {
   overflow-x: auto;
   line-height: 1.65;
 }
+
+.markdown .complexity-metric {
+  border-left: 3px solid #5c72ac;
+  border-radius: 0 8px 8px 0;
+  padding: 10px 14px;
+  margin: 8px 0;
+  background: #f0f3fa;
+  font-size: 14px;
+  color: #33415e;
+}
+.markdown .complexity-metric strong {
+  color: #233e79;
+  font-weight: 700;
+}
+.spoken-guidance p + p {
+  margin-top: 14px;
+}
+.code-toolbar > .icon-button {
+  flex-shrink: 0;
+}
