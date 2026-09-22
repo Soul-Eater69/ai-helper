@@ -120,7 +120,7 @@ export default function QuestionImages({
               <figcaption>{image.name}</figcaption>
               <button
                 type="button"
-                className="subtle"
+                className="image-remove-button"
                 aria-label={`Remove image ${image.name}`}
                 onClick={() =>
                   work.setImages((items) => items.filter((item) => item.id !== image.id))
@@ -143,6 +143,16 @@ export default function QuestionImages({
         >
           <h2>{previewImage.name}</h2>
           <img src={previewImage.dataUrl} alt="Question image preview" />
+          <button
+            type="button"
+            className="subtle"
+            onClick={() => {
+              work.setImages((items) => items.filter((item) => item.id !== previewImage.id));
+              setPreviewId(null);
+            }}
+          >
+            Remove image
+          </button>
           <button type="button" className="subtle" onClick={() => setPreviewId(null)}>
             Close preview
           </button>

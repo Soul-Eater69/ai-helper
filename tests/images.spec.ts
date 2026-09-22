@@ -160,3 +160,34 @@ test('failed capture closes stale choices and allows a fresh retry', async ({ pa
   await expect(page.getByAltText('Question image preview')).toBeVisible();
   await page.getByRole('button', { name: 'Close preview' }).click();
 });
+
+test('remove from preview closes it and removes the draft attachment', async ({ page }) => {
+  await setup(page);
+  await page.getByRole('button', { name: 'Capture question', exact: true }).click();
+  await page.getByRole('button', { name: 'Question window', exact: true }).click();
+  await page.getByRole('button', { name: 'Preview image Question window' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Remove image', exact: true }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(page.locator('.question-images img')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Generate answer', exact: true })).toBeDisabled();
+});
+
+test('removing a sent image excludes it from subsequent request history', async ({ page }) => {
+  await setup(page);
+  await page.getByRole('button', { name: 'Capture question', exact: true }).click();
+  await page.getByRole('button', { name: 'Question window', exact: true }).click();
+  await page.getByRole('button', { name: 'Generate answer', exact: true }).click();
+  await page.getByRole('button', { name: 'Remove sent image Question window' }).click();
+  await expect(page.locator('.sent-images')).toHaveCount(0);
+  await page.locator('#question').fill('Explain the approach');
+  await page.getByRole('button', { name: 'Generate answer', exact: true }).click();
+  const history = await page.evaluate(
+    () =>
+      (
+        window as unknown as {
+          imageRequests: { history: { images?: unknown[] }[] }[];
+        }
+      ).imageRequests[1].history,
+  );
+  expect(history.every((item) => !item.images?.length)).toBe(true);
+});

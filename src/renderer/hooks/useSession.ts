@@ -381,6 +381,15 @@ export function useSession() {
     setQuestion,
     images,
     setImages,
+    removeTurnImage: (turnId: string, imageId: string) => {
+      setTurns((items) =>
+        items.map((turn) =>
+          turn.id === turnId
+            ? { ...turn, images: turn.images?.filter((image) => image.id !== imageId) }
+            : turn,
+        ),
+      );
+    },
     sessionId: sessionId.current,
     busy,
     demo,

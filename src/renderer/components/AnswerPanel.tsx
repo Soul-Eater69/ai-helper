@@ -132,7 +132,18 @@ export default function AnswerPanel({
                   {!!turn.images?.length && (
                     <div className="question-images sent-images">
                       {turn.images.map((image) => (
-                        <img key={image.id} src={image.dataUrl} alt={image.name} />
+                        <figure key={image.id}>
+                          <img src={image.dataUrl} alt={image.name} />
+                          <button
+                            type="button"
+                            className="image-remove-button"
+                            aria-label={`Remove sent image ${image.name}`}
+                            title="Remove from this conversation and future requests"
+                            onClick={() => work.removeTurnImage(turn.id, image.id)}
+                          >
+                            Remove
+                          </button>
+                        </figure>
                       ))}
                     </div>
                   )}
