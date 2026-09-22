@@ -1,6 +1,6 @@
 # Conversational LLD practice
 
-Prompt 2.11.0 adds LLD guidance automatically within the existing mixed-topic conversation. No separate mode or stage selector is required.
+Prompt 2.12.0 adds LLD guidance automatically within the existing mixed-topic conversation. No separate mode or stage selector is required.
 
 The flow is: clarify one consequential point and wait; summarize confirmed requirements, exclusions and proposed assumptions; explain a core user action; derive responsibilities, state and methods; explain and implement when requested; validate with concrete object state changes. Interviewer redirects can skip stages. A clarification, review or class sketch must not propose replacement source code.
 
@@ -22,3 +22,13 @@ Use a fresh conversation and verify the behavior with the configured provider:
 10. Switch to parking-lot design, then to an algorithm question. Expect no locker assumptions to carry over and the appropriate topic guidance to apply.
 
 Automated tests cover prompt integration, planning/proposal separation and visual display with fixed example outputs. They do not measure live-model compliance with these scenarios or native audio behavior.
+
+## Depth and pacing regression: locker replacement
+
+Replay the supplied sequence: one location, exact match, expiring code, replacement, customer, package ID, package ID alone is enough. The next answer must accept the settled verification simplification and proceed. Do not ask again whether to add another verification detail. If a validity duration was not supplied, explicitly propose a configurable duration instead of silently choosing seven days.
+
+Expect a reason for every stored lookup and responsibility. A valid design can use one deposit record referenced by package ID and current code, or another justified representation. It must explain duplicate active package handling, what happens when code generation fails, why expired codes leave occupancy unchanged, and why pickup/replacement cannot succeed after collection. Previously issued codes must not later reopen an unrelated deposit through identifier reuse.
+
+Before asking to implement, show an end-to-end example exercising expiry and replacement, including rejection of the old code and successful pickup with the new code. Keep object positions stable and show concrete changes. Do not repeat that entire trace after coding; validate a different meaningful case against the actual implementation.
+
+These are live-model acceptance checks, not claims of automated semantic validation.
