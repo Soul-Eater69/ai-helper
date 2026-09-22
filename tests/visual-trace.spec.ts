@@ -261,3 +261,64 @@ test('finishing a streamed answer preserves the step already selected in its com
   await expect(page.getByText('Shall I implement that?', { exact: true })).toBeVisible();
   await expect(diagram.locator('.trace-step-label')).toHaveText('Step 2 of 4');
 });
+
+test('LLD object walkthrough shows a rejected operation and preserves working code', async ({
+  page,
+}) => {
+  const trace = {
+    version: 1,
+    kind: 'graph',
+    title: 'Expired pickup code',
+    input:
+      'Code A7 expires at 10:00. Customer attempts pickup at 10:01. Compartment C1 contains a package.',
+    nodes: [
+      { id: 'locker', label: 'Locker', row: 0, column: 0 },
+      { id: 'token', label: 'Code A7', row: 1, column: 0 },
+      { id: 'slot', label: 'Compartment C1', row: 1, column: 1 },
+    ],
+    edges: [
+      { from: 'locker', to: 'token' },
+      { from: 'token', to: 'slot' },
+    ],
+    steps: [
+      {
+        title: 'Look up the pickup code',
+        say: 'I look up A7 and find its record. It points to compartment C1, which still contains a package.',
+        write: 'Call Locker.pickup("A7")\nCode A7 expires at 10:00\nCompartment C1: occupied',
+        active: ['locker', 'token'],
+        values: [
+          { id: 'token', value: 'expires 10:00' },
+          { id: 'slot', value: 'occupied' },
+        ],
+      },
+      {
+        title: 'Reject the expired code',
+        say: 'It is 10:01, so the code has expired. I reject the pickup. The package is still inside, so C1 stays occupied.',
+        write:
+          '10:01 >= 10:00: code expired\nReturn an expired-code error\nCompartment C1 stays occupied',
+        active: ['token'],
+        values: [
+          { id: 'token', value: 'expired' },
+          { id: 'slot', value: 'occupied' },
+        ],
+      },
+    ],
+  };
+  await supplyAnswers(page, [
+    '## Class design\n\n> The code and compartment keep separate state.\n\n```pseudocode\nLocker.pickup(code) -> success or error\n```\n\n' +
+      traceFence(trace),
+  ]);
+  await ask(page, 'Walk through an expired pickup code');
+  await expect(page.getByTestId('pseudocode')).toContainText('Locker.pickup(code)');
+  const view = page.getByRole('region', {
+    name: 'Visual dry run: Expired pickup code',
+    exact: true,
+  });
+  await expect(view.locator('svg.trace-graph')).toHaveCount(2);
+  await expect(view.locator('.trace-notebook-step').last()).toContainText(
+    'Compartment C1 stays occupied',
+  );
+  await expect(
+    page.getByText('The full version is in the code workspace for review.', { exact: true }),
+  ).toHaveCount(0);
+});

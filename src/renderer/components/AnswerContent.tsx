@@ -38,6 +38,15 @@ const sectionActions: Record<string, string> = {
   'dry run': 'Walk through',
   'edge cases': 'Check',
   complexity: 'Reference',
+  requirements: 'Write',
+  'out of scope': 'Write',
+  assumptions: 'Write',
+  'core flow': 'Explain',
+  classes: 'Write / draw',
+  'class design': 'Write / draw',
+  implementation: 'Explain as you code',
+  walkthrough: 'Walk through',
+  'trade-offs': 'Explain',
 };
 function SectionHeading({ children }: { children?: ReactNode }) {
   const action = sectionActions[visibleText(children).trim().toLowerCase()];
