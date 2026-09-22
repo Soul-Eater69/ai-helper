@@ -1366,3 +1366,15 @@ svg {
   white-space: pre-line;
   margin: 0;
 }
+
+.speaker-picker {
+  padding: 0 14px 12px;
+}
+.speaker-picker label {
+  display: block;
+  margin-bottom: 6px;
+}
+.speaker-picker select {
+  width: 100%;
+  min-width: 0;
+}

@@ -74,9 +74,15 @@ describe('local vault', () => {
     const vault = new Vault(dir, codec);
     await Promise.all([
       vault.setKey('test-secret'),
+      vault.setDeepgramKey('deepgram-secret'),
       vault.saveSettings(settingsSchema.parse({ model: 'my-model' })),
     ]);
     const loaded = new Vault(dir, codec);
+    expect(await loaded.key()).toBe('test-secret');
+    expect(await loaded.deepgramKey()).toBe('deepgram-secret');
+    expect((await readFile(join(dir, 'vault.bin'))).toString()).not.toContain('deepgram-secret');
+    await loaded.setDeepgramKey('');
+    expect(await loaded.deepgramKey()).toBe('');
     expect(await loaded.key()).toBe('test-secret');
     expect((await loaded.settings()).model).toBe('my-model');
     expect((await readFile(join(dir, 'vault.bin'))).toString()).not.toContain('test-secret');

@@ -67,6 +67,28 @@ export default function App() {
         <div className="nav-label transcript-label">
           Transcript <span className={listening ? 'green-dot' : 'neutral-dot'} />
         </div>
+        {work.settings.transcriptionProvider === 'deepgram' && (
+          <div className="speaker-picker">
+            <label htmlFor="response-speaker">Respond to</label>
+            <select
+              id="response-speaker"
+              value={work.selectedSpeaker ?? ''}
+              onChange={(e) =>
+                work.selectSpeaker(e.target.value === '' ? null : Number(e.target.value))
+              }
+            >
+              <option value="">Choose a speaker — auto answers paused</option>
+              {work.speakers.map((speaker) => (
+                <option key={speaker} value={speaker}>
+                  Speaker {speaker + 1}
+                </option>
+              ))}
+            </select>
+            <p className="field-help">
+              Match a label to the person you want answers for. Reselect after restarting.
+            </p>
+          </div>
+        )}
         <div className="transcript-list">
           {work.transcript.length === 0 && !work.partial ? (
             <div className="transcript-empty">
@@ -81,7 +103,13 @@ export default function App() {
                   onClick={() => work.setQuestion(item.text)}
                   title="Use this transcript as your question"
                 >
-                  <span>PHRASE {String(i + 1).padStart(2, '0')}</span>
+                  <span>
+                    {item.diarized
+                      ? item.speaker === undefined
+                        ? 'SPEAKER UNKNOWN'
+                        : `SPEAKER ${item.speaker + 1}`
+                      : `PHRASE ${String(i + 1).padStart(2, '0')}`}
+                  </span>
                   <p>{item.text}</p>
                 </button>
               ))}

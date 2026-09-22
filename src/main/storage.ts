@@ -13,6 +13,7 @@ interface Codec {
 }
 const vaultSchema = z.object({
   key: z.string().default(''),
+  deepgramKey: z.string().default(''),
   settings: settingsSchema,
   sessions: z.array(savedSessionSchema).max(50),
 });
@@ -31,7 +32,7 @@ export class Vault {
       return vaultSchema.parse(JSON.parse(this.codec.decrypt(await readFile(this.file))));
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === 'ENOENT')
-        return { key: '', settings: settingsSchema.parse({}), sessions: [] };
+        return { key: '', deepgramKey: '', settings: settingsSchema.parse({}), sessions: [] };
       throw new Error(
         'Local storage could not be read. Back up vault.bin in the application data folder before resetting it.',
       );
@@ -52,6 +53,15 @@ export class Vault {
   async key(): Promise<string> {
     await this.queue;
     return (await this.read()).key;
+  }
+  async deepgramKey(): Promise<string> {
+    await this.queue;
+    return (await this.read()).deepgramKey;
+  }
+  setDeepgramKey(key: string): Promise<void> {
+    return this.mutate((v) => {
+      v.deepgramKey = key;
+    });
   }
   async settings(): Promise<Settings> {
     await this.queue;

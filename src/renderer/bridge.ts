@@ -15,6 +15,10 @@ export const demoAPI: DesktopAPI = {
     throw new Error('Open the Windows desktop app to store an API key.');
   },
   deleteKey: async () => undefined,
+  setDeepgramKey: async () => {
+    throw new Error('Open the desktop app to store an API key.');
+  },
+  deleteDeepgramKey: async () => undefined,
   answer: async (request) => {
     const current = ++generation;
     let answer = example;
