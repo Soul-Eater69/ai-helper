@@ -16,9 +16,11 @@ import {
 } from '../../shared/contracts';
 import { SpeechQueue } from '../speech-queue';
 import { buildHistory, compactSpeechRequest } from '../../shared/history';
+import type { ImageAttachment } from '../../shared/images';
 import { SessionSaver } from '../session-saver';
 import { AudioCapture } from '../audio/capture';
 export interface Turn {
+  images?: ImageAttachment[];
   id: string;
   question: string;
   answer: string;
@@ -38,6 +40,7 @@ export function useSession() {
   const [selected, setSelected] = useState<string | null>(null);
   const [navigationRequest, setNavigationRequest] = useState(0);
   const [question, setQuestion] = useState('');
+  const [images, setImages] = useState<ImageAttachment[]>([]);
   const [busy, setBusy] = useState(false);
   const [demo, setDemo] = useState(false);
   const [error, setError] = useState('');
@@ -66,8 +69,8 @@ export function useSession() {
   } | null>(null);
   const audio = useRef<AudioCapture | null>(null);
   const speechQueue = useRef<SpeechQueue | null>(null);
-  const current = useRef({ settings, context, doc, turns, demo, proposal });
-  current.current = { settings, context, doc, turns, demo, proposal };
+  const current = useRef({ settings, context, doc, turns, demo, proposal, images });
+  current.current = { settings, context, doc, turns, demo, proposal, images };
   const api = () => (current.current.demo ? demoAPI : desktopAPI);
   const refreshSettings = useCallback(async () => {
     try {
@@ -97,15 +100,28 @@ export function useSession() {
   const ask = useCallback(
     async (
       text: string,
-      overrides?: { demo?: boolean; speech?: boolean; recentSpeech?: string[] },
+      overrides?: {
+        demo?: boolean;
+        speech?: boolean;
+        recentSpeech?: string[];
+        images?: ImageAttachment[];
+      },
     ) => {
-      if (!text.trim()) return;
+      const attached = overrides?.images ?? [];
+      if (!text.trim() && !attached.length) return;
+      text = text.trim() || 'Read the question in the attached image and help me work through it.';
       if (!overrides?.speech) {
         speechQueue.current?.stop();
         void desktopAPI.cancelSpeech();
       }
       const state = current.current;
       const useDemo = overrides?.demo ?? state.demo;
+      if (useDemo && attached.length) {
+        setError(
+          'Image questions need the desktop app and your API key. Leave the sample session first.',
+        );
+        return false;
+      }
       if (!useDemo && !desktopAPI.isDesktop) {
         setError('Open the Windows app for live answers, or try the sample session.');
         return;
@@ -125,13 +141,14 @@ export function useSession() {
       setSelected(id);
       setTurns((items) => [
         ...(items.length >= 30 ? [items[0], ...items.slice(-28)] : items),
-        { id, question: text.trim(), answer: '', status: 'streaming' as const },
+        { id, question: text.trim(), images: attached, answer: '', status: 'streaming' as const },
       ]);
       const history = buildHistory(state.turns);
       try {
         await (useDemo ? demoAPI : desktopAPI).answer({
           id,
           question: text,
+          images: attached,
           context: state.context,
           speechContext: overrides?.recentSpeech,
           code: baseCode,
@@ -140,6 +157,7 @@ export function useSession() {
           language: state.settings.language,
           history,
         });
+        return true;
       } catch (e) {
         if (active.current?.id === id) {
           setBusy(false);
@@ -147,6 +165,7 @@ export function useSession() {
           setError(message(e));
           setTurns((items) => items.map((t) => (t.id === id ? { ...t, status: 'error' } : t)));
         }
+        return false;
       }
     },
     [],
@@ -305,6 +324,7 @@ export function useSession() {
     setTranscript([]);
     setPartial('');
     setQuestion('');
+    setImages([]);
     setError('');
     setNotice('');
     setDemo(false);
@@ -359,6 +379,9 @@ export function useSession() {
     },
     question,
     setQuestion,
+    images,
+    setImages,
+    sessionId: sessionId.current,
     busy,
     demo,
     error,

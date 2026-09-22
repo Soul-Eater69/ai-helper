@@ -8,7 +8,8 @@ A Windows desktop workspace for technical interview practice and meetings where 
 
 - **One continuous session:** mixed questions use shared conversation, pinned requirements and working code, with no topic or stage selection.
 - **LLD:** clarify one requirement at a time, summarize scope, derive entities, implement, and cover edge cases.
-- **DSA:** explain the reasoning behind each choice, write readable code, and step through visual dry runs with synchronized speaking and writing notes.
+- **Image questions:** use Capture question to select a screen/window, paste an image into the composer, or use Add image. Preview/remove up to three attachments before sending. The latest image question stays available for in-session follow-ups; images are not saved to session history. Requires an API model with image input.
+- **DSA:** explain the reasoning behind each choice, write code with a short comment on each meaningful line, and step through visual dry runs with synchronized speaking and writing notes.
 - **Amazon behavioral:** shape supplied experience into natural STAR + learning answers. Missing experience triggers a question, not an invented achievement.
 - **Continuous audio:** explicitly capture system playback (including Zoom) or a microphone; stream transcripts and interpret conversational turns after a pause.
 - **Reviewable code:** focused before/after snippets for each change, jump-to-change navigation, inline or side-by-side comparison, and explicit working/proposed copy actions. Compare successive drafts or all pending changes against working code. Accept/reject and undo stay explicit; edits made during generation make a proposal stale and unapplyable.

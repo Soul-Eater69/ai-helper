@@ -43,3 +43,11 @@ Run this in a **new session**, then repeat with older helper-style answers in hi
 9. Provide a complete statement with a familiar title but a different return contract (for example, Two Sum returning values). Expect reasoning based on that contract rather than the memorized platform signature.
 10. Say “Let me finish the example first.” Expect a brief acknowledgment and no continued solution. Resume the example and verify that its actual details are used.
 11. Put the full problem statement in pinned context and ask to solve the named problem. Expect no request to repeat the statement.
+
+## Image question acceptance on the desktop
+
+- Click Capture question, select the intended window or monitor, open its preview and verify the text is legible before sending. Test multiple monitors and OS screen-recording permissions. Minimized/protected windows may not capture; paste a screenshot instead.
+- Cancel the picker and cancel during an in-flight capture; no attachment should appear. Start a new session during image loading; no attachment should leak into the new session.
+- Paste PNG/JPEG/WebP images and verify previews, remove actions, and image-only submission. Unsupported or oversized files must show an error.
+- Send a real problem image with an image-capable API model. Verify exact constraints, examples and signature; ask a follow-up and check that image context is retained. Saved/reopened sessions retain text, not image bytes.
+- Confirm live audio still starts/stops independently while using the screenshot picker.

@@ -63,10 +63,29 @@ export const openAIProvider: StreamProvider = async function* (request, settings
       instructions: buildInstructions(settings),
       max_output_tokens: 6000,
       input: [
-        ...request.history,
+        ...request.history.map(({ role, content, images }) => ({
+          role,
+          content: images?.length
+            ? [
+                { type: 'input_text' as const, text: content },
+                ...images.map((image) => ({
+                  type: 'input_image' as const,
+                  image_url: image.dataUrl,
+                  detail: 'high' as const,
+                })),
+              ]
+            : content,
+        })),
         {
           role: 'user',
-          content: JSON.stringify(composeAnswerContext(request, settings)),
+          content: [
+            { type: 'input_text', text: JSON.stringify(composeAnswerContext(request, settings)) },
+            ...(request.images ?? []).map((image) => ({
+              type: 'input_image' as const,
+              image_url: image.dataUrl,
+              detail: 'high' as const,
+            })),
+          ],
         },
       ],
     },

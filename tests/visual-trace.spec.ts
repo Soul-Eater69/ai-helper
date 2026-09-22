@@ -62,14 +62,18 @@ test('dry runs open as copyable notes with all steps and a compact diagram', asy
     exact: true,
   });
   await expect(trace.locator('.trace-notebook-step')).toHaveCount(4);
+  await expect(trace.locator('svg.trace-graph')).toHaveCount(4);
+  await expect(trace.locator('.trace-notebook-write').nth(1)).toHaveText('1 + max(0, 0) = 1');
   await expect(trace.locator('.trace-notebook-step').last()).toContainText(
     'return 1 + max(1, 1) = 2',
   );
-  expect((await trace.locator('svg.trace-graph').boundingBox())!.width).toBeLessThanOrEqual(400);
+  expect((await trace.locator('svg.trace-graph').first().boundingBox())!.width).toBeLessThanOrEqual(
+    400,
+  );
   await trace.getByRole('button', { name: 'Copy notes for step 2', exact: true }).click();
   await expect
     .poll(() => page.evaluate(() => (window as unknown as { copiedTrace: string }).copiedTrace))
-    .toContain('1 + max(0, 0) = 1');
+    .toBe('1 + max(0, 0) = 1');
   await trace.getByRole('button', { name: 'Walkthrough', exact: true }).click();
   await trace.getByRole('button', { name: 'Next step' }).click();
   await trace.getByRole('button', { name: 'Notes', exact: true }).click();
@@ -177,6 +181,8 @@ test('array marks, graph traversals and grid values render without executing mod
   await ask(page, 'Show the grid');
   const cells = page
     .getByRole('region', { name: 'Visual dry run: Grid update', exact: true })
+    .locator('.trace-notebook-step')
+    .first()
     .locator('.trace-cell');
   await expect(cells).toHaveCount(4);
   await expect(cells.nth(2)).toHaveCSS('grid-row-start', '2');

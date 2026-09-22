@@ -5,6 +5,9 @@ import AnswerContent from './AnswerContent';
 import { ArrowUpRight, Check, Copy, MessageSquare, Sparkles, Square } from 'lucide-react';
 import type { Workspace } from '../hooks/useSession';
 import PracticeTools from './PracticeTools';
+import QuestionImages from './QuestionImages';
+import { readQuestionImage } from '../images';
+import { MAX_IMAGES } from '../../shared/images';
 export default function AnswerPanel({
   work,
   openSettings,
@@ -13,6 +16,50 @@ export default function AnswerPanel({
   openSettings: () => void;
 }) {
   const [copied, setCopied] = useState<string | null>(null);
+  const [processingImage, setProcessingImage] = useState(false);
+  const imageWork = useRef(0);
+  const imageBusy = useRef(false);
+  useEffect(() => {
+    imageWork.current++;
+    imageBusy.current = false;
+    setProcessingImage(false);
+    return () => {
+      imageWork.current++;
+    };
+  }, [work.sessionId]);
+  async function addFiles(files: File[]) {
+    if (imageBusy.current) return;
+    if (work.images.length + files.length > MAX_IMAGES) {
+      work.setError('Attach up to three images per question.');
+      return;
+    }
+    const ticket = ++imageWork.current;
+    imageBusy.current = true;
+    setProcessingImage(true);
+    try {
+      const images = await Promise.all(files.map(readQuestionImage));
+      if (ticket === imageWork.current)
+        work.setImages((items) => [...items, ...images].slice(0, MAX_IMAGES));
+    } catch (error) {
+      if (ticket === imageWork.current)
+        work.setError(error instanceof Error ? error.message : 'Could not read the image.');
+    } finally {
+      if (ticket === imageWork.current) {
+        imageBusy.current = false;
+        setProcessingImage(false);
+      }
+    }
+  }
+  async function send() {
+    if (imageBusy.current) return;
+    const images = work.images;
+    const ticket = imageWork.current;
+    const sent = await work.ask(work.question, { images });
+    if (sent && ticket === imageWork.current)
+      work.setImages((items) =>
+        items.filter((image) => !images.some((sentImage) => sentImage.id === image.id)),
+      );
+  }
   const scroll = useRef<HTMLDivElement>(null);
   const items = useRef(new Map<string, HTMLElement>());
   const latest = work.turns.at(-1);
@@ -82,6 +129,13 @@ export default function AnswerPanel({
                     <MessageSquare size={12} /> QUESTION {index + 1}
                   </span>
                   <h2>{turn.question}</h2>
+                  {!!turn.images?.length && (
+                    <div className="question-images sent-images">
+                      {turn.images.map((image) => (
+                        <img key={image.id} src={image.dataUrl} alt={image.name} />
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <div className="response-label">
                   <span className="assistant-avatar">
@@ -144,9 +198,15 @@ export default function AnswerPanel({
         className="composer"
         onSubmit={(event) => {
           event.preventDefault();
-          void work.ask(work.question);
+          send();
         }}
       >
+        <QuestionImages
+          key={work.sessionId}
+          work={work}
+          addFiles={addFiles}
+          processing={processingImage}
+        />
         <label className="sr-only" htmlFor="question">
           {work.turns.length
             ? 'Ask a follow-up or change the requirements'
@@ -157,11 +217,21 @@ export default function AnswerPanel({
           value={work.question}
           maxLength={20000}
           onChange={(event) => work.setQuestion(event.target.value)}
+          onPaste={(event) => {
+            const files = Array.from(event.clipboardData.items)
+              .filter((item) => item.kind === 'file' && item.type.startsWith('image/'))
+              .map((item) => item.getAsFile())
+              .filter((file): file is File => !!file);
+            if (files.length) {
+              event.preventDefault();
+              void addFiles(files);
+            }
+          }}
           placeholder="Ask anything, or add a follow-up…"
           onKeyDown={(event) => {
             if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
               event.preventDefault();
-              void work.ask(work.question);
+              send();
             }
           }}
         />
@@ -172,7 +242,11 @@ export default function AnswerPanel({
               <Square size={12} /> Stop
             </button>
           )}
-          <button className="primary small" type="submit" disabled={!work.question.trim()}>
+          <button
+            className="primary small"
+            type="submit"
+            disabled={processingImage || (!work.question.trim() && !work.images.length)}
+          >
             {work.busy ? 'Send follow-up' : 'Generate answer'}
             <ArrowUpRight size={15} />
           </button>

@@ -2,6 +2,8 @@ import { app, BrowserWindow, ipcMain, safeStorage, session, desktopCapturer } fr
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { z } from 'zod';
+import { imageAttachmentSchema } from '../shared/images';
+import { withoutCaptureOverlay } from './screenshot';
 import { RequestGate } from '../shared/request-gate';
 import { Vault } from './storage';
 import { AssistantService, openAIProvider } from './assistant';
@@ -105,6 +107,46 @@ async function boot(): Promise<void> {
     cancelSpeech();
     answerGate.cancel();
     assistant.cancel();
+  });
+  // Capture is a user-selected still image, separate from the live audio grant.
+  let captureSources = new Set<string>();
+  let captureExpires = 0;
+  handle('capture:list', async () => {
+    captureSources.clear();
+    const sources = await desktopCapturer.getSources({
+      types: ['screen', 'window'],
+      thumbnailSize: { width: 320, height: 180 },
+    });
+    const choices = sources.filter((source) => source.name !== 'AI Helper').slice(0, 40);
+    captureSources = new Set(choices.map((source) => source.id));
+    captureExpires = Date.now() + 60000;
+    return choices.map((source) => ({
+      id: source.id,
+      name: source.name,
+      preview: source.thumbnail.toDataURL(),
+    }));
+  });
+  handle('capture:image', async (input) => {
+    const id = z.string().min(1).max(200).parse(input);
+    if (!captureSources.has(id) || Date.now() > captureExpires)
+      throw new Error('Choose a screen or window again.');
+    captureSources.clear();
+    const takeSnapshot = () =>
+      desktopCapturer.getSources({
+        types: [id.startsWith('screen:') ? 'screen' : 'window'],
+        thumbnailSize: { width: 1920, height: 1080 },
+      });
+    const sources = id.startsWith('screen:')
+      ? await withoutCaptureOverlay(window, takeSnapshot)
+      : await takeSnapshot();
+    const selected = sources.find((source) => source.id === id);
+    if (!selected || selected.thumbnail.isEmpty())
+      throw new Error('Could not capture this window. Try another screen or paste a screenshot.');
+    return imageAttachmentSchema.parse({
+      id: crypto.randomUUID(),
+      name: selected.name.slice(0, 160),
+      dataUrl: `data:image/jpeg;base64,${selected.thumbnail.toJPEG(90).toString('base64')}`,
+    });
   });
   handle('speech:route', async (input) => {
     const request = speechRequestSchema.parse(input);

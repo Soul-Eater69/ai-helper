@@ -44,3 +44,33 @@ it('preserves an existing model when loading older settings', () => {
   expect(settings.model).toBe('gpt-5.4');
   expect(settings.answerReasoning).toBe('auto');
 });
+
+it('sends current and previous question images as vision inputs, not JSON text', async () => {
+  const image = { id: 'i', name: 'Problem', dataUrl: 'data:image/png;base64,aGVsbG8=' };
+  const request = answerRequestSchema.parse({
+    id: 'vision',
+    question: 'Read this',
+    code: '',
+    codeVersion: 0,
+    language: 'python',
+    images: [image],
+    history: [{ role: 'user', content: 'Earlier image', images: [image] }],
+  });
+  for await (const _event of openAIProvider(
+    request,
+    settingsSchema.parse({}),
+    'key',
+    new AbortController().signal,
+  )) {
+    /* consume */
+  }
+  const body = create.mock.lastCall?.[0] as { input: { content: unknown }[] };
+  expect(body.input[0].content).toEqual([
+    { type: 'input_text', text: 'Earlier image' },
+    { type: 'input_image', image_url: image.dataUrl, detail: 'high' },
+  ]);
+  expect(body.input[1].content).toEqual([
+    expect.objectContaining({ type: 'input_text' }),
+    { type: 'input_image', image_url: image.dataUrl, detail: 'high' },
+  ]);
+});

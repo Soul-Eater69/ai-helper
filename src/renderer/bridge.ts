@@ -7,6 +7,12 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 const example = `Okay, I’d keep this small: the parking lot owns its available spots and active tickets. Allocating a spot should update both together.\n\nFor this single-process example, I’m using a set for available spots and a dictionary for tickets. Entry removes one spot; exit puts it back. An unknown ticket produces a clear error.\n\n**What changes**\n- Add allocation and release operations.\n- Keep the ticket-to-spot mapping in one place.\n- Return a clear result when the lot is full.\n\n\`\`\`python\nfrom uuid import uuid4\n\n\nclass ParkingLot:\n    def __init__(self, capacity: int):\n        if capacity < 1:\n            raise ValueError("Capacity must be positive")\n        self.available = set(range(1, capacity + 1))\n        self.tickets = {}\n\n    def enter(self):\n        if not self.available:\n            return None  # Caller can display a lot-full message.\n        spot = self.available.pop()\n        ticket = str(uuid4())\n        self.tickets[ticket] = spot\n        return ticket, spot\n\n    def exit(self, ticket: str):\n        if ticket not in self.tickets:\n            raise ValueError("Unknown ticket")\n        self.available.add(self.tickets.pop(ticket))\n\`\`\`\n\nEntry and exit are average **O(1)**; storage is **O(capacity)**. I’d test a full lot, repeated exit, and reusing a released spot. Multiple gates would need an atomic allocation operation.`;
 export const demoAPI: DesktopAPI = {
   isDesktop: false,
+  listCaptureSources: async () => {
+    throw new Error('Screen capture requires the desktop app. You can paste an image here.');
+  },
+  captureImage: async () => {
+    throw new Error('Screen capture requires the desktop app.');
+  },
   getSettings: async () => ({ settings: demoSettings, hasKey: false }),
   saveSettings: async (settings) => {
     demoSettings = settingsSchema.parse(settings);

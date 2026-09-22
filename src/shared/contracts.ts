@@ -1,4 +1,10 @@
 import { z } from 'zod';
+import {
+  imageAttachmentSchema,
+  MAX_IMAGES,
+  type ImageAttachment,
+  type CaptureSource,
+} from './images';
 
 export const modeSchema = z.enum(['lld', 'dsa', 'behavioral']);
 export type Mode = z.infer<typeof modeSchema>;
@@ -106,6 +112,7 @@ export const answerRequestSchema = z
   .object({
     id: z.string().min(1).max(100),
     question: z.string().trim().min(1).max(20000),
+    images: z.array(imageAttachmentSchema).max(MAX_IMAGES).optional(),
     context: z.string().max(12000).default(''),
     speechContext: z.array(z.string().max(1600)).max(12).optional(),
     code: z.string().max(100000),
@@ -113,8 +120,18 @@ export const answerRequestSchema = z
     codeSource: z.enum(['working', 'proposal']).optional(),
     language: z.enum(languages),
     history: z
-      .array(z.object({ role: z.enum(['user', 'assistant']), content: z.string().max(20000) }))
+      .array(
+        z.object({
+          role: z.enum(['user', 'assistant']),
+          content: z.string().max(20000),
+          images: z.array(imageAttachmentSchema).max(MAX_IMAGES).optional(),
+        }),
+      )
       .max(60)
+      .refine(
+        (items) => items.reduce((n, item) => n + (item.images?.length ?? 0), 0) <= MAX_IMAGES,
+        'Too many history images',
+      )
       .refine(
         (items) => items.reduce((n, item) => n + item.content.length, 0) <= 80000,
         'History exceeds context budget',
@@ -179,6 +196,8 @@ export interface DesktopAPI {
   setKey(key: string): Promise<void>;
   deleteKey(): Promise<void>;
   answer(request: AnswerRequest): Promise<void>;
+  listCaptureSources(): Promise<CaptureSource[]>;
+  captureImage(sourceId: string): Promise<ImageAttachment>;
   cancel(): Promise<void>;
   routeSpeech(request: SpeechRequest): Promise<SpeechDecision>;
   cancelSpeech(): Promise<void>;
