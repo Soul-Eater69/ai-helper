@@ -1,5 +1,23 @@
 import { test, expect } from '@playwright/test';
 
+test('answer presets persist and custom models clear the reasoning preset', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  for (const preset of ['none', 'medium']) {
+    await page.getByLabel('Answer preset').selectOption(preset);
+    await expect(page.getByLabel('Answer model', { exact: true })).toHaveValue('gpt-5.6-sol');
+    await page.getByRole('button', { name: 'Save settings' }).click();
+    await page.getByRole('button', { name: 'Settings', exact: true }).click();
+    await expect(page.getByLabel('Answer preset')).toHaveValue(preset);
+  }
+  await page.getByLabel('Answer model', { exact: true }).fill('gpt-4o-mini');
+  await expect(page.getByLabel('Answer preset')).toHaveValue('custom');
+  await page.getByRole('button', { name: 'Save settings' }).click();
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await expect(page.getByLabel('Answer model', { exact: true })).toHaveValue('gpt-4o-mini');
+  await expect(page.getByLabel('Answer preset')).toHaveValue('custom');
+});
+
 test('demo code is reviewed, accepted, and undone explicitly', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));

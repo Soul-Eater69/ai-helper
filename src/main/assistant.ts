@@ -55,6 +55,9 @@ export const openAIProvider: StreamProvider = async function* (request, settings
   const stream = await client.responses.create(
     {
       model: settings.model,
+      ...(settings.model === 'gpt-5.6-sol' && settings.answerReasoning !== 'auto'
+        ? { reasoning: { effort: settings.answerReasoning } }
+        : {}),
       stream: true,
       store: false,
       instructions: buildInstructions(settings),

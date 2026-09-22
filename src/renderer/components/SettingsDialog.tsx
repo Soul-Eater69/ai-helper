@@ -106,11 +106,40 @@ export default function SettingsDialog({ work, close }: { work: Workspace; close
           </div>
           <div className="field-grid">
             <div>
+              <label htmlFor="answer-preset">Answer preset</label>
+              <select
+                id="answer-preset"
+                value={
+                  draft.model === 'gpt-5.6-sol' && draft.answerReasoning !== 'auto'
+                    ? draft.answerReasoning
+                    : 'custom'
+                }
+                onChange={(e) => {
+                  const value = e.target.value;
+                  if (value === 'none' || value === 'medium') {
+                    setDraft({ ...draft, model: 'gpt-5.6-sol', answerReasoning: value });
+                  } else {
+                    setDraft({ ...draft, answerReasoning: 'auto' });
+                  }
+                }}
+              >
+                <option value="custom">Custom / model default</option>
+                <option value="medium">GPT-5.6 Sol — Thinking</option>
+                <option value="none">GPT-5.6 Sol — Instant</option>
+              </select>
+              <p className="field-help">
+                Thinking uses medium reasoning. Instant turns reasoning off for quicker replies.
+                Both use GPT-5.6 Sol through your API account.
+              </p>
+            </div>
+            <div>
               <label htmlFor="answer-model">Answer model</label>
               <input
                 id="answer-model"
                 value={draft.model}
-                onChange={(e) => setDraft({ ...draft, model: e.target.value })}
+                onChange={(e) =>
+                  setDraft({ ...draft, model: e.target.value, answerReasoning: 'auto' })
+                }
               />
             </div>
             <div>
