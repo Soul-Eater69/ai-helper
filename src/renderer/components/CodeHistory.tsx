@@ -66,7 +66,13 @@ export default function CodeHistory({ work }: { work: Workspace }) {
       </p>
       <div className="editor-wrap">
         {compare ? (
-          <CodeDiff original={version.code} modified={work.doc.code} language={version.language} />
+          <CodeDiff
+            original={version.code}
+            modified={work.doc.code}
+            language={version.language}
+            originalLabel="Selected history version"
+            modifiedLabel="Working code"
+          />
         ) : (
           <CodeEditor key={version.id} value={version.code} language={version.language} readOnly />
         )}

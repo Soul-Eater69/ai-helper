@@ -11,7 +11,7 @@ A Windows desktop workspace for technical interview practice and meetings where 
 - **DSA:** explain the reasoning behind each choice, write readable code, and step through visual dry runs with synchronized speaking and writing notes.
 - **Amazon behavioral:** shape supplied experience into natural STAR + learning answers. Missing experience triggers a question, not an invented achievement.
 - **Continuous audio:** explicitly capture system playback (including Zoom) or a microphone; stream transcripts and interpret conversational turns after a pause.
-- **Reviewable code:** line numbers, syntax highlighting, inline additions/deletions, accept/reject, and undo. Editing while a proposal is generated makes that proposal stale and unapplyable.
+- **Reviewable code:** focused before/after snippets for each change, jump-to-change navigation, inline or side-by-side comparison, and explicit working/proposed copy actions. Compare successive drafts or all pending changes against working code. Accept/reject and undo stay explicit; edits made during generation make a proposal stale and unapplyable.
 - **Personal prompts:** edit speaking style, real experience facts, and topic-specific guidance that applies automatically in Settings.
 - **Local control:** your own API key; OS-encrypted settings and optional session history. No raw audio is retained.
 

@@ -294,6 +294,13 @@ for (const acceptFirst of [false, true]) {
       ({ first, second }) => {
         const listeners = new Set<(event: unknown) => void>();
         const requests: { code: string; id: string }[] = [];
+        Object.defineProperty(navigator, 'clipboard', {
+          value: {
+            writeText: async (text: string) => {
+              Object.assign(window, { copiedRevision: text });
+            },
+          },
+        });
         Object.assign(window, {
           revisionRequests: requests,
           desktop: {
@@ -365,13 +372,43 @@ for (const acceptFirst of [false, true]) {
     await expect(diff.locator('.view-lines')).toContainText(['capacity = 10']);
     await expect(diff.locator('.view-lines')).toContainText(['capacity = 20']);
     await expect(diff.getByRole('status')).toHaveText('Change 1 of 2');
+    await expect(diff.getByLabel('Before this change', { exact: true })).toContainText(
+      'capacity = 10',
+    );
+    await expect(diff.getByLabel('After this change', { exact: true })).toContainText(
+      'capacity = 20',
+    );
     await expect(diff.locator('.diff-counts')).toContainText('+2');
     await expect(diff.locator('.diff-counts')).toContainText('−2');
     await diff.getByRole('button', { name: 'Next change' }).click();
     await expect(diff.getByRole('status')).toHaveText('Change 2 of 2');
+    await expect(diff.getByLabel('Before this change', { exact: true })).toContainText('exits = 1');
+    await expect(diff.getByLabel('After this change', { exact: true })).toContainText('exits = 2');
     await expect(diff.locator('.view-lines')).toContainText(['exits = 2']);
     await diff.getByRole('button', { name: 'Previous change' }).click();
     await expect(diff.getByRole('status')).toHaveText('Change 1 of 2');
+    await diff.getByLabel('Side by side', { exact: true }).check();
+    await expect(diff.getByLabel('After this change', { exact: true })).toContainText(
+      'capacity = 20',
+    );
+    await diff.getByLabel('Side by side', { exact: true }).uncheck();
+    if (!acceptFirst) {
+      await page.getByLabel('Compare all pending changes with working code').check();
+      await expect(diff.getByLabel('Before this change', { exact: true })).toContainText(
+        'Your working code goes here',
+      );
+      await page.getByLabel('Compare all pending changes with working code').uncheck();
+      await expect(diff.getByLabel('Before this change', { exact: true })).toContainText(
+        'capacity = 10',
+      );
+    }
+    await page.getByRole('button', { name: 'Copy proposed code', exact: true }).click();
+    expect(
+      await page.evaluate(() => (window as unknown as { copiedRevision: string }).copiedRevision),
+    ).toBe(second);
+    await page
+      .getByRole('region', { name: 'Code workspace', exact: true })
+      .screenshot({ path: `test-results/code-review-${acceptFirst}.png` });
     await page.getByRole('button', { name: 'Accept changes' }).click();
     await expect(page.getByTestId('working-editor')).toContainText('capacity = 20');
     await page.locator('#question').fill('Now increase capacity to thirty');
