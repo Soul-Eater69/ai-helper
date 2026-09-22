@@ -20,26 +20,29 @@ export function CodeEditor({
   value,
   language,
   onChange,
+  readOnly = false,
 }: {
   value: string;
   language: string;
-  onChange: (value: string) => void;
+  onChange?: (value: string) => void;
+  readOnly?: boolean;
 }) {
   const host = useRef<HTMLDivElement>(null);
   const editor = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
   const change = useRef(onChange);
-  change.current = onChange;
+  change.current = readOnly ? undefined : onChange;
   const initial = useRef({ value, language });
   useEffect(() => {
     const model = monaco.editor.createModel(initial.current.value, initial.current.language);
     const instance = monaco.editor.create(host.current!, {
       ...options,
       model,
-      ariaLabel: 'Working code editor',
+      readOnly,
+      ariaLabel: readOnly ? 'Historical code viewer' : 'Working code editor',
     });
     editor.current = instance;
     const subscription = instance.onDidChangeModelContent(() =>
-      change.current(instance.getValue()),
+      change.current?.(instance.getValue()),
     );
     return () => {
       subscription.dispose();
@@ -56,7 +59,13 @@ export function CodeEditor({
     const model = editor.current?.getModel();
     if (model) monaco.editor.setModelLanguage(model, language);
   }, [language]);
-  return <div ref={host} className="monaco-surface" data-testid="working-editor" />;
+  return (
+    <div
+      ref={host}
+      className="monaco-surface"
+      data-testid={readOnly ? 'history-editor' : 'working-editor'}
+    />
+  );
 }
 export function CodeDiff({
   original,

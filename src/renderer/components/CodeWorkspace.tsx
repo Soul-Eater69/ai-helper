@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react';
+import CodeHistory from './CodeHistory';
 import { CodeEditor, CodeDiff } from './MonacoSurface';
 import { Check, Copy, FileCode2, GitCompareArrows, Undo2, X } from 'lucide-react';
 import type { Workspace } from '../hooks/useSession';
 import { languages } from '../../shared/contracts';
 export default function CodeWorkspace({ work }: { work: Workspace }) {
-  const [view, setView] = useState<'editor' | 'diff'>('editor');
+  const [view, setView] = useState<'editor' | 'diff' | 'history'>('editor');
   useEffect(() => {
-    if (work.proposal) setView('diff');
-    else setView('editor');
+    setView((current) => (current === 'history' ? current : work.proposal ? 'diff' : 'editor'));
   }, [work.proposal]);
   const stale = !!work.proposal && work.proposal.baseVersion !== work.doc.version;
   return (
@@ -45,6 +45,9 @@ export default function CodeWorkspace({ work }: { work: Workspace }) {
           <GitCompareArrows size={14} /> Review changes{' '}
           {work.proposal && <span className="tab-dot" />}
         </button>
+        <button className={view === 'history' ? 'selected' : ''} onClick={() => setView('history')}>
+          History
+        </button>
         <div className="spacer" />
         <button
           aria-label="Copy working code"
@@ -63,13 +66,13 @@ export default function CodeWorkspace({ work }: { work: Workspace }) {
         <button
           aria-label="Undo revision"
           title="Undo last accepted revision"
-          disabled={!work.doc.previous.length}
+          disabled={view === 'history' || !work.doc.previous.length}
           onClick={work.undo}
         >
           <Undo2 size={16} />
         </button>
       </div>
-      {work.proposal && (
+      {work.proposal && view !== 'history' && (
         <div className={`proposal-banner ${stale ? 'stale' : ''}`}>
           <GitCompareArrows size={16} />
           <span>
@@ -82,7 +85,9 @@ export default function CodeWorkspace({ work }: { work: Workspace }) {
         </div>
       )}
       <div className="editor-wrap">
-        {view === 'diff' && work.proposal ? (
+        {view === 'history' ? (
+          <CodeHistory work={work} />
+        ) : view === 'diff' && work.proposal ? (
           <CodeDiff
             original={work.proposalBase}
             modified={work.proposal.code}
@@ -96,29 +101,31 @@ export default function CodeWorkspace({ work }: { work: Workspace }) {
           />
         )}
       </div>
-      <div className="code-footer">
-        {work.proposal ? (
-          <>
-            <span className="diff-key">
-              <i className="added" /> added <i className="removed" /> removed
-            </span>
-            <div className="spacer" />
-            <button className="dark-button" onClick={work.reject}>
-              <X size={14} /> Reject
-            </button>
-            <button className="primary small" disabled={stale} onClick={work.accept}>
-              <Check size={15} /> Accept changes
-            </button>
-          </>
-        ) : (
-          <>
-            <span>
-              <span className="green-dot" /> Your code · saved in this session
-            </span>
-            <span>{work.doc.code.split('\n').length} lines</span>
-          </>
-        )}
-      </div>
+      {view !== 'history' && (
+        <div className="code-footer">
+          {work.proposal ? (
+            <>
+              <span className="diff-key">
+                <i className="added" /> added <i className="removed" /> removed
+              </span>
+              <div className="spacer" />
+              <button className="dark-button" onClick={work.reject}>
+                <X size={14} /> Reject
+              </button>
+              <button className="primary small" disabled={stale} onClick={work.accept}>
+                <Check size={15} /> Accept changes
+              </button>
+            </>
+          ) : (
+            <>
+              <span>
+                <span className="green-dot" /> Your code · saved in this session
+              </span>
+              <span>{work.doc.code.split('\n').length} lines</span>
+            </>
+          )}
+        </div>
+      )}
     </section>
   );
 }

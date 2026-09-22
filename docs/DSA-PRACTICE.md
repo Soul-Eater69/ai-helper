@@ -34,3 +34,21 @@ For spoken tests, enable automatic responses and speak the same turns. A brief â
 ## Limits
 
 Automatic guidance and relevant feedback accompany conversational turns. Feedback uses a code snapshot when a request is sent; it does not monitor an external editor or review every keystroke. All traces and reviews are model reasoning, not executed tests. This release has no code execution sandbox. Long conversations have bounded history; pin important constraints and restate an earlier problem if needed. No guarantee of model accuracy, fixed latency or interview outcome is made.
+
+### Discussing the approach and reviewing code versions
+
+The approach response includes a short **Algorithm** outline: numbered steps with
+initialization, conditions, updates and return behavior. This supports the spoken
+reasoning before implementation; it does not create a workspace proposal. Follow-up
+questions get focused answers, and clarifications are reserved for decisions that
+could change the solution. Model responses still require review in a live practice
+session.
+
+Open **Code workspace â†’ History** to inspect completed code proposals or working
+snapshots retained before acceptance. **Compare with working code** shows the
+selected version on the original side and current working code on the modified side.
+Browsing is read-only; return to **Review changes** to accept the current proposal.
+Generated versions are not necessarily accepted versions. History covers the retained
+conversation (up to 30 turns) and up to 20 pre-acceptance working snapshots, not every
+manual edit. Reopened saved sessions recover generated versions from saved answers;
+pre-acceptance working snapshots are session-only.

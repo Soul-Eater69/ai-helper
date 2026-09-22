@@ -1259,3 +1259,45 @@ svg {
 .answer-table th:first-child {
   min-width: 52px;
 }
+
+.code-history {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+.history-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 14px 18px 6px;
+}
+.history-controls > label:first-child {
+  display: grid;
+  gap: 6px;
+  width: 100%;
+  font-size: 12px;
+  color: var(--muted);
+}
+.history-controls select {
+  width: 100%;
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  background: white;
+  color: #222;
+}
+.history-compare {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+.history-caption,
+.history-empty {
+  margin: 0;
+  padding: 10px 18px;
+  color: #666;
+  font-size: 12px;
+}

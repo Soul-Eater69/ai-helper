@@ -74,3 +74,79 @@ test('legacy settings gain story fields and multiple source blocks remain review
   await expect(page.getByTestId('working-editor')).toContainText('print("final")');
   await expect(page.getByTestId('working-editor')).not.toContainText('print("example")');
 });
+
+test('code history is read-only and keeps pending proposals separate', async ({ page }) => {
+  await page.addInitScript(() => {
+    const listeners = new Set<(event: unknown) => void>();
+    let count = 0;
+    Object.assign(window, {
+      desktop: {
+        isDesktop: true,
+        getSettings: async () => ({
+          hasKey: true,
+          settings: {
+            model: 'test',
+            transcriptionModel: 'test',
+            language: 'python',
+            style: '',
+            profile: '',
+            prompts: { lld: '', dsa: '', behavioral: '' },
+            autoAnswer: false,
+            saveHistory: false,
+          },
+        }),
+        listSessions: async () => [],
+        cancel: async () => {},
+        cancelSpeech: async () => {},
+        stopAudio: async () => {},
+        onEvent: (fn: (event: unknown) => void) => {
+          listeners.add(fn);
+          return () => listeners.delete(fn);
+        },
+        answer: async (request: { id: string }) => {
+          count++;
+          const text =
+            count === 1
+              ? '## Algorithm\n1. Initialize `seen`.\n2. Check the complement before storing each value.'
+              : '```python\nprint(' + count + ')\n```';
+          setTimeout(
+            () => listeners.forEach((fn) => fn({ type: 'answer.done', id: request.id, text })),
+            10,
+          );
+        },
+      },
+    });
+  });
+  await page.goto('/');
+  const ask = async (question: string) => {
+    await page.locator('#question').fill(question);
+    await page.getByRole('button', { name: 'Generate answer' }).click();
+    await expect(page.locator('.response-status').last()).toContainText('Ready');
+  };
+  await ask('Explain the algorithm');
+  await expect(page.getByRole('button', { name: 'Accept changes' })).toHaveCount(0);
+  await expect(page.locator('.markdown')).toContainText('Check the complement');
+  await ask('Implement it');
+  await page.getByRole('button', { name: 'Accept changes' }).click();
+  await ask('Change it');
+  await page.getByRole('button', { name: 'History', exact: true }).click();
+  await expect(page.getByTestId('history-editor')).toContainText('print(3)');
+  await ask('Another change');
+  await expect(page.getByTestId('history-editor')).toContainText('print(3)');
+  await page.getByLabel('Code version').selectOption({ label: 'Generated · Q2: Implement it' });
+  await expect(page.getByTestId('history-editor')).toContainText('print(2)');
+  await expect(page.getByRole('button', { name: 'Accept changes' })).toHaveCount(0);
+  await page.getByLabel('Compare with working code').check();
+  await expect(page.getByTestId('code-diff')).toContainText('No code changes');
+  await page.getByRole('button', { name: 'Review changes' }).click();
+  await expect(page.getByRole('button', { name: 'Accept changes' })).toBeEnabled();
+  await page.getByRole('button', { name: 'Accept changes' }).click();
+  await expect(page.getByTestId('working-editor')).toContainText('print(4)');
+  await page.getByRole('button', { name: 'History', exact: true }).click();
+  await page.getByLabel('Code version').selectOption({ label: 'Generated · Q2: Implement it' });
+  await page.getByLabel('Compare with working code').check();
+  await expect(page.getByTestId('code-diff')).toContainText('Change 1 of 1');
+  await page.screenshot({ path: 'test-results/code-history.png' });
+  await page.getByRole('button', { name: 'Editor', exact: true }).click();
+  await expect(page.getByTestId('working-editor')).toContainText('print(4)');
+});
