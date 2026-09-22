@@ -31,3 +31,27 @@ it('does not label an incomplete streamed context marker as spoken guidance', ()
   expect(html).toContain('Personal context needed');
   expect(html).not.toContain('Say this');
 });
+
+it('repairs the merged dry-run header while preserving its three data columns', () => {
+  const html = renderToStaticMarkup(
+    createElement(AnswerContent, {
+      text: '| StepWrite / stateSay aloud | | |\n| --- | --- | --- |\n| Take 1 | remaining[3] = 1 | Course 3 must wait. |',
+    }),
+  );
+  expect(html).toContain('<th>Step</th>');
+  expect(html).toContain('<th>Write / state</th>');
+  expect(html).toContain('<th>Say aloud</th>');
+  expect(html).toContain('<td>remaining[3] = 1</td>');
+  expect(html).not.toContain('StepWrite');
+});
+
+it('leaves other table headers and literal fenced examples unchanged', () => {
+  const html = renderToStaticMarkup(
+    createElement(AnswerContent, {
+      text: '| StepWrite / stateSay aloud | Meaning | Notes |\n| --- | --- | --- |\n| a | b | c |\n\n```text\nStepWrite / stateSay aloud\n```',
+    }),
+  );
+  expect(html).toContain('<th>Meaning</th>');
+  expect(html).toContain('<th>Notes</th>');
+  expect(html.match(/StepWrite/g)).toHaveLength(2);
+});

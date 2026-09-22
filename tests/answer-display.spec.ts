@@ -31,7 +31,7 @@ test('spoken guidance and dry-run state are visually separate and fit the panel'
         },
         answer: async (request: { id: string }) => {
           const text =
-            '> Yeah, checking first means I can only match an earlier element. That handles two separate threes correctly.\n\n## Empty heading\n\n## Algorithm\n\n```pseudocode\nFOR each value\n    IF complement is in seen\n        RETURN matching indices\n    STORE value and index\n```\n\n## Dry run\n\n| Step | Write / state | Say aloud |\n| --- | --- | --- |\n| 1 | `nums = [3, 3], target = 6, seen = {}` | I start with an empty map. |\n| 2 | `i = 0, need = 3` → store `{3: 0}` | There is no earlier three, so I save this one. |\n| 3 | `i = 1, need = 3` → return `[0, 1]` | Now the earlier three gives me a pair of different indices. |\n\n## Complexity\n\n**Time:** **O(n)** — one pass.\n\n**Space:** **O(n)** — saved values.';
+            '> Yeah, checking first means I can only match an earlier element. That handles two separate threes correctly.\n\n## Empty heading\n\n## Algorithm\n\n```pseudocode\nFOR each value\n    IF complement is in seen\n        RETURN matching indices\n    STORE value and index\n```\n\n## Dry run\n\n| StepWrite / stateSay aloud | | |\n| --- | --- | --- |\n| 1 | `nums = [3, 3], target = 6, seen = {}` | I start with an empty map. |\n| 2 | `i = 0, need = 3` → store `{3: 0}` | There is no earlier three, so I save this one. |\n| 3 | `i = 1, need = 3` → return `[0, 1]` | Now the earlier three gives me a pair of different indices. |\n\n## Complexity\n\n**Time:** **O(n)** — one pass.\n\n**Space:** **O(n)** — saved values.';
           setTimeout(
             () => listeners.forEach((fn) => fn({ type: 'answer.done', id: request.id, text })),
             10,
