@@ -1,7 +1,7 @@
 import { Children, isValidElement, type ReactNode } from 'react';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { repairDryRunHeader } from '../answer-markdown';
+import { organizeResponseSections, repairDryRunHeader } from '../answer-markdown';
 
 function visibleText(children: ReactNode): string {
   return Children.toArray(children)
@@ -51,7 +51,7 @@ function removeEmptyHeadings() {
 export default function AnswerContent({ text }: { text: string }) {
   return (
     <Markdown
-      remarkPlugins={[remarkGfm, repairDryRunHeader, removeEmptyHeadings]}
+      remarkPlugins={[remarkGfm, repairDryRunHeader, organizeResponseSections, removeEmptyHeadings]}
       components={{
         a: ({ children }) => <span>{children}</span>,
         img: () => null,
