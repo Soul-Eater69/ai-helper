@@ -1,7 +1,21 @@
-import { Children, isValidElement, type ReactNode } from 'react';
-import Markdown from 'react-markdown';
+import {
+  Children,
+  createContext,
+  isValidElement,
+  type ReactNode,
+  useContext,
+  useMemo,
+} from 'react';
+import Markdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { organizeResponseSections, repairDryRunHeader } from '../answer-markdown';
+import VisualDryRun from './VisualDryRun';
+
+const StreamingContext = createContext(false);
+function DryRunBlock({ source }: { source: string }) {
+  const streaming = useContext(StreamingContext);
+  return <VisualDryRun source={source} streaming={streaming} />;
+}
 
 function visibleText(children: ReactNode): string {
   return Children.toArray(children)
@@ -48,71 +62,94 @@ function removeEmptyHeadings() {
   };
 }
 
-export default function AnswerContent({ text }: { text: string }) {
-  return (
-    <Markdown
-      remarkPlugins={[remarkGfm, repairDryRunHeader, organizeResponseSections, removeEmptyHeadings]}
-      components={{
-        a: ({ children }) => <span>{children}</span>,
-        img: () => null,
-        h2: SectionHeading,
-        p: ({ children }) => {
-          const metric = /^(?:Time|Space|Auxiliary space|Extra space)(?: complexity)?\s*:/i.test(
-            visibleText(children),
-          );
-          return <p className={metric ? 'complexity-metric' : undefined}>{children}</p>;
-        },
-        pre: ({ children }) => {
-          const code = Children.toArray(children)[0];
-          const pseudocode =
-            isValidElement<{ className?: string }>(code) &&
-            code.props.className === 'language-pseudocode';
-          return pseudocode ? (
-            <section
-              className="pseudocode-panel"
-              data-testid="pseudocode"
-              aria-label="Algorithm pseudocode"
-            >
-              <div className="pseudocode-label">Pseudocode · planning only</div>
-              <pre>{children}</pre>
-            </section>
-          ) : (
+export default function AnswerContent({
+  text,
+  streaming = false,
+}: {
+  text: string;
+  streaming?: boolean;
+}) {
+  const components = useMemo<Components>(
+    () => ({
+      a: ({ children }) => <span>{children}</span>,
+      img: () => null,
+      h2: SectionHeading,
+      p: ({ children }) => {
+        const metric = /^(?:Time|Space|Auxiliary space|Extra space)(?: complexity)?\s*:/i.test(
+          visibleText(children),
+        );
+        return <p className={metric ? 'complexity-metric' : undefined}>{children}</p>;
+      },
+      pre: ({ children }) => {
+        const code = Children.toArray(children)[0];
+        if (
+          isValidElement<{ className?: string; children?: ReactNode }>(code) &&
+          code.props.className === 'language-dry-run'
+        ) {
+          return <DryRunBlock source={visibleText(code.props.children).trim()} />;
+        }
+        const pseudocode =
+          isValidElement<{ className?: string }>(code) &&
+          code.props.className === 'language-pseudocode';
+        return pseudocode ? (
+          <section
+            className="pseudocode-panel"
+            data-testid="pseudocode"
+            aria-label="Algorithm pseudocode"
+          >
+            <div className="pseudocode-label">Pseudocode · planning only</div>
             <pre>{children}</pre>
-          );
-        },
-        blockquote: ({ children }) => {
-          const text = visibleText(children).trim();
-          if (
-            text.startsWith('[Context needed]') ||
-            (text.startsWith('[C') && '[Context needed]'.startsWith(text))
-          ) {
-            return (
-              <aside className="context-needed" aria-label="Personal context needed">
-                <span className="spoken-label">Personal context needed · not spoken</span>
-                <p>{text.slice('[Context needed]'.length).trim()}</p>
-              </aside>
-            );
-          }
+          </section>
+        ) : (
+          <pre>{children}</pre>
+        );
+      },
+      blockquote: ({ children }) => {
+        const text = visibleText(children).trim();
+        if (
+          text.startsWith('[Context needed]') ||
+          (text.startsWith('[C') && '[Context needed]'.startsWith(text))
+        ) {
           return (
-            <aside className="spoken-guidance" data-testid="spoken-guidance" aria-label="Say this">
-              <span className="spoken-label">Say this</span>
-              <div>{children}</div>
+            <aside className="context-needed" aria-label="Personal context needed">
+              <span className="spoken-label">Personal context needed · not spoken</span>
+              <p>{text.slice('[Context needed]'.length).trim()}</p>
             </aside>
           );
-        },
-        table: ({ children }) => (
-          <div
-            className="answer-table"
-            role="region"
-            aria-label="Step-by-step explanation"
-            tabIndex={0}
-          >
-            <table>{children}</table>
-          </div>
-        ),
-      }}
-    >
-      {text}
-    </Markdown>
+        }
+        return (
+          <aside className="spoken-guidance" data-testid="spoken-guidance" aria-label="Say this">
+            <span className="spoken-label">Say this</span>
+            <div>{children}</div>
+          </aside>
+        );
+      },
+      table: ({ children }) => (
+        <div
+          className="answer-table"
+          role="region"
+          aria-label="Step-by-step explanation"
+          tabIndex={0}
+        >
+          <table>{children}</table>
+        </div>
+      ),
+    }),
+    [],
+  );
+  return (
+    <StreamingContext.Provider value={streaming}>
+      <Markdown
+        remarkPlugins={[
+          remarkGfm,
+          repairDryRunHeader,
+          organizeResponseSections,
+          removeEmptyHeadings,
+        ]}
+        components={components}
+      >
+        {text}
+      </Markdown>
+    </StreamingContext.Provider>
   );
 }

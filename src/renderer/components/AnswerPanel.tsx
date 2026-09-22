@@ -1,4 +1,5 @@
 import { splitAnswer } from '../../shared/revision';
+import { answerAsNotes } from '../../shared/visual-trace';
 import { useEffect, useRef, useState } from 'react';
 import AnswerContent from './AnswerContent';
 import { ArrowUpRight, Check, Copy, MessageSquare, Sparkles, Square } from 'lucide-react';
@@ -99,6 +100,7 @@ export default function AnswerPanel({
                 </div>
                 <article className="markdown">
                   <AnswerContent
+                    streaming={turn.status === 'streaming'}
                     text={
                       text ||
                       (turn.status === 'streaming'
@@ -114,7 +116,7 @@ export default function AnswerPanel({
                       className="subtle"
                       onClick={() => {
                         void navigator.clipboard
-                          .writeText(text)
+                          .writeText(answerAsNotes(text))
                           .then(() => {
                             setCopied(turn.id);
                             setTimeout(() => setCopied(null), 2000);

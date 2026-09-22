@@ -1366,3 +1366,289 @@ svg {
   white-space: pre-line;
   margin: 0;
 }
+
+/* Visual dry runs are data-driven notes, independent of the code workspace. */
+.visual-dry-run {
+  container-type: inline-size;
+  margin: 16px 0 24px;
+  border: 1px solid #e0e5eb;
+  border-radius: 16px;
+  background: #fff;
+  overflow: hidden;
+}
+.trace-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid #e6e9ed;
+}
+.trace-kicker,
+.trace-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+  color: #5c6879;
+}
+.trace-kicker,
+.trace-label {
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.markdown .trace-header h3 {
+  font-size: 17px;
+  margin: 4px 0;
+}
+.markdown .trace-input {
+  color: #616b78;
+  font-size: 13px;
+  margin: 5px 0 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.trace-body {
+  padding: 17px 20px;
+}
+.trace-step-label {
+  color: #647184;
+  font-size: 12px;
+}
+.markdown .visual-dry-run h4 {
+  font-size: 15px;
+  font-weight: 600;
+  margin: 6px 0 12px;
+}
+.trace-scene {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
+}
+.trace-diagram-scroll {
+  overflow-x: auto;
+  min-width: 0;
+  flex: 1;
+  padding: 6px 0;
+}
+.trace-graph {
+  display: block;
+  max-width: none;
+}
+.trace-edge {
+  fill: none;
+  stroke: #d5dce5;
+  stroke-width: 1.5;
+}
+.trace-edge.active {
+  stroke: #3a70c6;
+  stroke-width: 2;
+  stroke-dasharray: 5 3;
+}
+.trace-node circle {
+  fill: #fff;
+  stroke: #d9e0e8;
+  stroke-width: 1.5;
+}
+.trace-node text {
+  fill: #253044;
+  font-family: 'Segoe Print', 'Chalkboard SE', sans-serif;
+  font-size: 16px;
+}
+.trace-node .trace-node-value {
+  font-family: inherit;
+  font-size: 12px;
+  fill: #356d49;
+}
+.trace-node.done circle {
+  fill: #edf7ef;
+}
+.trace-node.active circle {
+  stroke: #3b72c8;
+  stroke-width: 2.5;
+}
+.trace-node.removed circle {
+  fill: #fff0ef;
+}
+.trace-cross {
+  stroke: #b94242;
+  stroke-width: 2;
+}
+.trace-cells {
+  display: grid;
+  gap: 8px;
+  padding: 10px 2px;
+}
+.trace-cell {
+  padding: 9px 6px;
+  border-radius: 8px;
+  border: 1px solid #d9e0e8;
+  text-align: center;
+  min-height: 60px;
+  overflow-wrap: anywhere;
+  background: #fff;
+}
+.trace-cell-label {
+  display: block;
+  font:
+    12px/1.5 ui-monospace,
+    monospace;
+  color: #4f5d70;
+}
+.trace-cell strong {
+  display: block;
+  font:
+    16px/1.5 ui-monospace,
+    monospace;
+}
+.trace-cell.done {
+  background: #edf7ef;
+}
+.trace-cell.active {
+  outline: 2px solid #3b72c8;
+  outline-offset: -1px;
+}
+.trace-cell.removed {
+  background: #fff0ef;
+  text-decoration: line-through;
+}
+.trace-collections {
+  flex: 0 1 170px;
+  min-width: 0;
+}
+.markdown .trace-collections ol {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 0;
+  margin: 7px 0 14px;
+  list-style: none;
+}
+.markdown .trace-collections li {
+  background: #f2f5fa;
+  border-radius: 7px;
+  padding: 7px 10px;
+  margin: 0;
+  font:
+    12px/1.5 ui-monospace,
+    monospace;
+  overflow-wrap: anywhere;
+}
+.trace-empty {
+  color: #69717b;
+}
+.trace-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  font-size: 11px;
+  color: #5d6877;
+  margin: 7px 0 16px;
+}
+.trace-legend span:nth-child(2) {
+  color: #356d49;
+}
+.trace-legend span:nth-child(3) {
+  color: #ad4141;
+}
+.trace-notes {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr);
+  gap: 18px;
+  border-top: 1px solid #e6e9ed;
+  padding-top: 16px;
+}
+.markdown .trace-speech {
+  margin: 7px 0 0;
+  font-size: 16px;
+  line-height: 1.7;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+.markdown .visual-dry-run pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font:
+    13px/1.65 ui-monospace,
+    monospace;
+  background: #f5f7fa;
+  color: #29364a;
+  padding: 12px;
+  margin: 7px 0 0;
+  border-radius: 9px;
+}
+.trace-controls {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  border-top: 1px solid #e6e9ed;
+  padding: 12px 20px;
+}
+.trace-controls > span {
+  color: #677386;
+  font-size: 12px;
+}
+.trace-controls > div {
+  display: flex;
+  gap: 8px;
+}
+.trace-controls button {
+  min-height: 40px;
+}
+.trace-all-notes {
+  border-top: 1px solid #e6e9ed;
+  padding: 12px 20px;
+  font-size: 13px;
+}
+.trace-all-notes summary {
+  cursor: pointer;
+  color: #58677d;
+}
+.trace-all-notes section {
+  padding: 12px 0;
+}
+.trace-fallback {
+  margin: 12px 0;
+  padding: 14px;
+  background: #f5f7fa;
+  border-radius: 9px;
+  color: #566174;
+}
+.markdown .trace-fallback pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+@container (max-width: 530px) {
+  .trace-scene {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .trace-collections {
+    flex-basis: auto;
+  }
+  .markdown .trace-collections ol {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+  .trace-notes {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .trace-body,
+  .trace-header,
+  .trace-controls,
+  .trace-all-notes {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+  .trace-controls button {
+    min-height: 44px;
+  }
+}
+.trace-node .trace-check {
+  font: 12px sans-serif;
+  fill: #356d49;
+}
+.trace-cell.done::after {
+  content: '✓';
+  display: block;
+  font-size: 12px;
+  color: #356d49;
+}

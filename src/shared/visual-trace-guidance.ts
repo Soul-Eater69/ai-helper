@@ -1,0 +1,29 @@
+/** Data-only presentation protocol: shared with renderer validation, never a workspace language. */
+export const VISUAL_TRACE_GUIDANCE = String.raw`Visual dry-run output:
+When a DSA dry run is called for, prefer a single fenced block tagged dry-run containing valid JSON. This is display-only drawing data, not source code. No JavaScript, HTML, SVG, Markdown inside JSON strings, URLs or external resources. Do not also emit the same trace as a table. Normal spoken approach text comes first; a coding checkpoint, when needed, comes AFTER the closed dry-run fence. Use a small example to fit the response; never truncate a trace or omit the complete requested implementation.
+
+JSON shape (all listed top-level fields required except edges):
+{
+  "version": 1,
+  "kind": "tree",
+  "title": "Maximum tree depth",
+  "input": "[3,9,20]",
+  "nodes": [
+    {"id":"root","label":"3","row":0,"column":1},
+    {"id":"left","label":"9","row":1,"column":0},
+    {"id":"right","label":"20","row":1,"column":2}
+  ],
+  "edges": [{"from":"root","to":"left"},{"from":"root","to":"right"}],
+  "steps": [
+    {"title":"Start at 3","say":"I need the depth of each side, then I add one for the root. I'll check the left side first.","write":"left = depth(9)","active":["root"],"collections":[{"label":"Call stack · top first","items":["depth(3)"]}]},
+    {"title":"9 returns one","say":"Both children of 9 are empty, so each returns zero. Including 9 itself gives one. That goes back to 3.","write":"depth(null) = 0 for each child\n1 + max(0, 0) = 1","active":["left"],"done":["left"],"values":[{"id":"left","value":"depth 1"}],"edge":{"from":"left","to":"root"},"collections":[{"label":"Call stack · top first","items":["depth(9) → 1","depth(3) waits"]}]},
+    {"title":"Save left = 1; check 20","say":"Back at 3, I save the left depth. Now I check 20 on the right. Both its children are empty too, so it returns one.","write":"at 3: left = 1\ndepth(20) = 1 + max(0, 0) = 1","active":["right"],"done":["left","right"],"values":[{"id":"left","value":"depth 1"},{"id":"right","value":"depth 1"}],"edge":{"from":"right","to":"root"}},
+    {"title":"Combine at 3","say":"Both sides have depth one. I take one and add one for the root, so the answer is two nodes.","write":"return 1 + max(1, 1) = 2","active":["root"],"done":["root","left","right"],"values":[{"id":"root","value":"depth 2"},{"id":"left","value":"depth 1"},{"id":"right","value":"depth 1"}]}
+  ]
+}
+
+Choose kind tree or graph for connected nodes, array for indexed cells/pointers, grid for matrices, dp for a DP table, or notes when only state notes are useful. Coordinates are integer row/column positions, zero-based, max 11 each. Lay trees in levels with left children to the left and right children to the right; keep graph layouts stable and edges legible. For grids/DP, positions correspond to real table indices. For an array, use row 0 and sequential columns. Use distinct IDs even when two values are equal. Keep node labels short; put full state and reasoning in write and say. Empty inputs may use kind notes with nodes [] and no edges.
+
+Limits: at most 48 nodes, 96 edges, 32 steps, usually a much smaller example. Node IDs max 40 chars; labels max 40; step titles max 100; say and write max 1400 each. Each step REQUIRES title, say, write. Optional fields: active (IDs being examined or used), done (processed IDs), removed (crossed-out IDs), values (array of {id,value}, value max 60 chars), edge ({from,to} indicating call/traversal/return along an existing edge), collections (up to four {label,items}, up to 32 text items each). Edges may set directed:true for directed graphs. A return can highlight an edge backwards. All references must name existing nodes; IDs and coordinate positions are unique. No arbitrary styles or drawing commands.
+
+Each step is a FULL state snapshot: include all accumulated removed/done nodes and all values that should remain visible. Missing fields are empty, not inherited. List stack items top first and queue items front first, with those orders in the collection label. Put counters, maps, decisions, and before -> after values in write or named collections. For DP highlight the source and target cells, show their numeric values and the calculation in write, and explain why the transition is valid in say. For backtracking show undo steps explicitly. Explain base cases and returned values for trees; never conflate a node's value with its depth. The model is manually reasoning, not executing code. Do not add a diagram to greetings, narrow follow-ups or cosmetic code changes.`;

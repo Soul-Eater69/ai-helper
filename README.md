@@ -8,7 +8,7 @@ A Windows desktop workspace for technical interview practice and meetings where 
 
 - **One continuous session:** mixed questions use shared conversation, pinned requirements and working code, with no topic or stage selection.
 - **LLD:** clarify one requirement at a time, summarize scope, derive entities, implement, and cover edge cases.
-- **DSA:** explain the approach and complexity, write readable code, and work through follow-ups.
+- **DSA:** explain the reasoning behind each choice, write readable code, and step through visual dry runs with synchronized speaking and writing notes.
 - **Amazon behavioral:** shape supplied experience into natural STAR + learning answers. Missing experience triggers a question, not an invented achievement.
 - **Continuous audio:** explicitly capture system playback (including Zoom) or a microphone; stream transcripts and interpret conversational turns after a pause.
 - **Reviewable code:** line numbers, syntax highlighting, inline additions/deletions, accept/reject, and undo. Editing while a proposal is generated makes that proposal stale and unapplyable.
@@ -107,6 +107,8 @@ See [SECURITY.md](SECURITY.md) and [validation instructions](docs/TESTING.md).
 DSA guidance adapts to confirmed constraints, short replies, interruptions and direct requests. It asks one material clarification at a time, explains brute force and optimization, pauses before implementation unless coding is already requested, and supports manual dry runs, edge-case review and follow-up changes. Candidate wording is automatic: dry runs pair what to write with what to say, and coding includes narration cues in writing order. No coaching command or practice-button click is required.
 
 Open **Practice tools** below the latest response for **Explain approach**, **Dry run**, **Review code** and **Optimize**. These use the latest code and conversation without overwriting your typed draft. Reviews do not execute code or request automatic changes; ask to implement a fix when ready. Model pacing is instruction-driven, not a deterministic stage machine. See [DSA practice and live acceptance scenarios](docs/DSA-PRACTICE.md).
+
+Visual dry runs support trees, graphs, arrays, grids and DP tables. Use **Back / Next step** to follow the changing state; open **All walkthrough notes** to read everything together. Older text tables still display normally. Diagrams are manual, model-generated traces, not executed tests. See [visual dry runs](docs/VISUAL-DRY-RUNS.md).
 
 ## Personalization and real stories
 

@@ -1,4 +1,5 @@
 import type { SpeechRequest } from './contracts';
+import { answerAsNotes } from './visual-trace';
 /** Keep the opening question and newest complete turns inside a bounded provider payload. */
 export function buildHistory(
   turns: readonly { question: string; answer: string; status: string }[],
@@ -12,7 +13,7 @@ export function buildHistory(
     const turn = turns[i];
     const group: Message[] = i ? [{ role: 'user', content: turn.question.slice(0, 20000) }] : [];
     if (turn.status === 'done')
-      group.push({ role: 'assistant', content: turn.answer.slice(0, 20000) });
+      group.push({ role: 'assistant', content: answerAsNotes(turn.answer).slice(0, 20000) });
     const size = group.reduce((n, m) => n + m.content.length, 0);
     if (size > remaining || recent.length + group.length > 59) break;
     recent.unshift(...group);
@@ -30,9 +31,9 @@ export function compactSpeechRequest(request: SpeechRequest): SpeechRequest {
       ...message,
       content:
         message.role === 'assistant'
-          ? message.content.slice(-1200)
+          ? answerAsNotes(message.content).slice(-1200)
           : message.content.slice(0, 1200),
     })),
-    currentResponse: request.currentResponse.slice(-1200),
+    currentResponse: answerAsNotes(request.currentResponse).slice(-1200),
   };
 }
