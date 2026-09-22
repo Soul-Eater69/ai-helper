@@ -1969,3 +1969,62 @@ svg {
 .image-remove-button:hover {
   background: #fff1f2;
 }
+
+.requirements-panel {
+  margin: 16px 0 8px;
+  padding: 12px;
+  background: white;
+  border: 1px solid #e2e5e9;
+  border-radius: 10px;
+  max-height: 42vh;
+  overflow: auto;
+  flex-shrink: 0;
+}
+.requirements-panel-title {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: space-between;
+}
+.requirements-panel-title strong {
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.requirements-panel-title button {
+  font-size: 11px;
+  white-space: nowrap;
+  padding: 3px;
+}
+.requirements-panel h3 {
+  font-size: 12px;
+  margin: 12px 0 6px;
+}
+.requirements-panel ul {
+  padding-left: 17px;
+  margin: 0;
+}
+.requirement-point {
+  font-size: 12px;
+  line-height: 1.5;
+  margin: 6px 0;
+  overflow-wrap: anywhere;
+  animation: requirement-added 2.5s ease-out;
+}
+.requirements-empty {
+  color: #737b87;
+  font-size: 12px;
+  margin: 4px 0;
+}
+@keyframes requirement-added {
+  from {
+    background: #dbeafe;
+  }
+  to {
+    background: transparent;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .requirement-point {
+    animation: none;
+  }
+}

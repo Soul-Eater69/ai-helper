@@ -322,3 +322,39 @@ test('LLD object walkthrough shows a rejected operation and preserves working co
     page.getByText('The full version is in the code workspace for review.', { exact: true }),
   ).toHaveCount(0);
 });
+
+test('requirements accumulate beside chat, corrections replace notes, and new sessions clear them', async ({
+  page,
+}) => {
+  await page.addInitScript(() =>
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText: async (text: string) => Object.assign(window, { copiedNotes: text }) },
+    }),
+  );
+  const response = (requirements: string[], outOfScope: string[] = []) =>
+    '```requirements\n' +
+    JSON.stringify({ version: 1, topic: 'Amazon Locker', requirements, outOfScope }) +
+    '\n```\n\nWhat size matching should I use?';
+  await supplyAnswers(page, [
+    response(['One physical location.']),
+    response(['One physical location.', 'Exact size match.'], ['Notifications.']),
+    response(['One physical location.', 'Smallest available size that fits.'], ['Notifications.']),
+  ]);
+  const panel = page.getByRole('region', { name: 'Live requirements' });
+  await expect(panel.getByRole('heading', { name: 'Requirements', exact: true })).toBeVisible();
+  await ask(page, 'One physical location');
+  await expect(panel).toContainText('One physical location.');
+  await ask(page, 'Exact match, notifications are out of scope');
+  await expect(panel.locator('li')).toHaveCount(3);
+  await expect(panel).toContainText('Notifications.');
+  await ask(page, 'Actually use the smallest available size that fits');
+  await expect(panel).not.toContainText('Exact size match.');
+  await expect(panel).toContainText('Smallest available size that fits.');
+  await panel.getByRole('button', { name: 'Copy notes' }).click();
+  await expect
+    .poll(() => page.evaluate(() => (window as unknown as { copiedNotes: string }).copiedNotes))
+    .toContain('Out of scope\n- Notifications.');
+  await expect(page.locator('.language-requirements')).toHaveCount(0);
+  await page.getByRole('button', { name: 'New session', exact: true }).click();
+  await expect(panel.locator('li')).toHaveCount(0);
+});

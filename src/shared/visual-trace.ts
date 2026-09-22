@@ -1,3 +1,4 @@
+import { parseRequirements, requirementsAsNotes } from './requirements';
 import { z } from 'zod';
 
 const id = z.string().min(1).max(40);
@@ -147,6 +148,14 @@ export function answerAsNotes(answer: string): string {
         body: match.index! + match[0].length + 1,
       };
     } else if (!tag && match[1][0] === open.fence[0] && match[1].length >= open.fence.length) {
+      if (open.tag === 'requirements') {
+        const board = parseRequirements(answer.slice(open.body, match.index));
+        replacements.push({
+          start: open.start,
+          end: match.index! + match[0].length,
+          text: board ? requirementsAsNotes(board) : '',
+        });
+      }
       if (open.tag === 'dry-run') {
         const trace = parseVisualTrace(answer.slice(open.body, match.index));
         if (trace)

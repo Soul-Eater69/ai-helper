@@ -19,6 +19,7 @@ import {
 import { useSession, INITIAL_CODE } from './hooks/useSession';
 import { startsNewProblem } from '../shared/conversation';
 import { desktopAPI } from './bridge';
+import RequirementsPanel from './components/RequirementsPanel';
 import CodeWorkspace from './components/CodeWorkspace';
 import AnswerPanel from './components/AnswerPanel';
 import SettingsDialog from './components/SettingsDialog';
@@ -52,6 +53,7 @@ export default function App() {
         <button className="new-session" onClick={() => void work.reset()}>
           <Plus size={17} /> New session
         </button>
+        <RequirementsPanel work={work} />
         <details className="context-notes">
           <summary>Requirements &amp; context</summary>
           <p>Pin constraints to keep them available throughout this session.</p>

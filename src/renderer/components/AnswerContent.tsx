@@ -97,6 +97,11 @@ export default function AnswerContent({
         ) {
           return <DryRunBlock source={visibleText(code.props.children).trim()} />;
         }
+        if (
+          isValidElement<{ className?: string }>(code) &&
+          code.props.className === 'language-requirements'
+        )
+          return null;
         const pseudocode =
           isValidElement<{ className?: string }>(code) &&
           code.props.className === 'language-pseudocode';

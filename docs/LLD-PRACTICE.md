@@ -1,6 +1,6 @@
 # Conversational LLD practice
 
-Prompt 2.12.0 adds LLD guidance automatically within the existing mixed-topic conversation. No separate mode or stage selector is required.
+Prompt 2.13.0 adds LLD guidance automatically within the existing mixed-topic conversation. No separate mode or stage selector is required.
 
 The flow is: clarify one consequential point and wait; summarize confirmed requirements, exclusions and proposed assumptions; explain a core user action; derive responsibilities, state and methods; explain and implement when requested; validate with concrete object state changes. Interviewer redirects can skip stages. A clarification, review or class sketch must not propose replacement source code.
 
@@ -32,3 +32,9 @@ Expect a reason for every stored lookup and responsibility. A valid design can u
 Before asking to implement, show an end-to-end example exercising expiry and replacement, including rejection of the old code and successful pickup with the new code. Keep object positions stable and show concrete changes. Do not repeat that entire trace after coding; validate a different meaningful case against the actual implementation.
 
 These are live-model acceptance checks, not claims of automated semantic validation.
+
+## Live requirements panel
+
+The sidebar now shows Requirements and Out of scope from the start of a session. Each completed LLD answer supplies a validated full snapshot in a display-only requirements fence. New and corrected bullets briefly highlight; Copy notes copies the current board as plain text. Proposed assumptions stay in chat until agreed. The final clarification should review the already accumulated notes instead of making the user write them again.
+
+Cancelled, streaming and malformed snapshots never replace the last valid board. Explicit new-question transitions clear it immediately; a new topic snapshot replaces it. New sessions clear it, and saved conversations reconstruct their notes from completed answers. Earlier answers retain their snapshots in conversation history. This feature uses the existing answer request, not an extra model call. Model omission or incorrect extraction remains possible and needs live practice validation.
