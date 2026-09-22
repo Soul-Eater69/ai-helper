@@ -29,6 +29,7 @@ export default function App() {
   const [source, setSource] = useState<'system' | 'microphone'>('system');
   const [historyOpen, setHistoryOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [codeExpanded, setCodeExpanded] = useState(false);
   const [notesExpanded, setNotesExpanded] = useState(false);
   const [codeVisibility, setCodeVisibility] = useState<boolean | null>(null);
   const latestQuestion = work.turns.at(-1)?.question;
@@ -255,9 +256,18 @@ export default function App() {
             </button>
           </div>
         )}
-        <div className={`workbench ${showCode ? '' : 'conversation-only'}`}>
+        <div
+          className={`workbench ${showCode ? '' : 'conversation-only'} ${showCode && codeExpanded ? 'code-expanded' : ''}`}
+        >
           <AnswerPanel work={work} openSettings={() => setSettingsOpen(true)} />
-          {showCode && <CodeWorkspace work={work} close={() => setCodeVisibility(false)} />}
+          {showCode && (
+            <CodeWorkspace
+              work={work}
+              close={() => setCodeVisibility(false)}
+              expanded={codeExpanded}
+              toggleExpanded={() => setCodeExpanded((value) => !value)}
+            />
+          )}
         </div>
         <footer className="statusbar">
           <span>

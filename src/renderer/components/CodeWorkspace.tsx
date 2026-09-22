@@ -1,11 +1,30 @@
 import { useEffect, useState } from 'react';
 import CodeHistory from './CodeHistory';
 import { CodeEditor, CodeDiff } from './MonacoSurface';
-import { Check, Copy, FileCode2, GitCompareArrows, Undo2, X } from 'lucide-react';
+import {
+  Check,
+  Copy,
+  FileCode2,
+  GitCompareArrows,
+  Undo2,
+  X,
+  Maximize2,
+  Minimize2,
+} from 'lucide-react';
 import type { Workspace } from '../hooks/useSession';
 import { languages } from '../../shared/contracts';
 import { extractProposal } from '../../shared/revision';
-export default function CodeWorkspace({ work, close }: { work: Workspace; close: () => void }) {
+export default function CodeWorkspace({
+  work,
+  close,
+  expanded,
+  toggleExpanded,
+}: {
+  work: Workspace;
+  close: () => void;
+  expanded: boolean;
+  toggleExpanded: () => void;
+}) {
   const [view, setView] = useState<'editor' | 'diff' | 'history'>('editor');
   const [compareWorking, setCompareWorking] = useState(false);
   useEffect(() => {
@@ -45,6 +64,15 @@ export default function CodeWorkspace({ work, close }: { work: Workspace; close:
             <option key={lang}>{lang}</option>
           ))}
         </select>
+        <button
+          className="icon-button code-expand"
+          aria-label={expanded ? 'Restore code width' : 'Expand code workspace'}
+          title={expanded ? 'Restore code width' : 'Give code more room'}
+          aria-pressed={expanded}
+          onClick={toggleExpanded}
+        >
+          {expanded ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+        </button>
         <button
           className="icon-button"
           aria-label="Close code workspace"

@@ -94,7 +94,12 @@ export default function AnswerPanel({
           </button>
         </div>
       )}
-      <div ref={scroll} className={`answer-scroll ${latest ? '' : 'is-empty'}`}>
+      <div
+        ref={scroll}
+        tabIndex={0}
+        aria-label="Conversation answers"
+        className={`answer-scroll ${latest ? '' : 'is-empty'}`}
+      >
         {!latest ? (
           <div className="empty-state">
             <h1>Let’s work through it.</h1>
@@ -225,6 +230,7 @@ export default function AnswerPanel({
         </label>
         <textarea
           id="question"
+          aria-describedby="composer-hint"
           value={work.question}
           maxLength={20000}
           onChange={(event) => work.setQuestion(event.target.value)}
@@ -240,14 +246,19 @@ export default function AnswerPanel({
           }}
           placeholder="Ask anything, or add a follow-up…"
           onKeyDown={(event) => {
-            if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+            if (
+              event.key === 'Enter' &&
+              !event.shiftKey &&
+              !event.nativeEvent.isComposing &&
+              event.nativeEvent.keyCode !== 229
+            ) {
               event.preventDefault();
-              send();
+              void send();
             }
           }}
         />
         <div className="composer-bottom">
-          <span>Ctrl + Enter to send</span>
+          <span id="composer-hint">Enter to send · Shift + Enter for a new line</span>
           {work.busy && (
             <button className="subtle" type="button" onClick={() => void work.stopAnswer()}>
               <Square size={12} /> Stop

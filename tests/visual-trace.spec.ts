@@ -371,3 +371,40 @@ test('requirements accumulate beside chat, corrections replace notes, and new se
   await page.getByRole('button', { name: 'New session', exact: true }).click();
   await expect(panel.locator('li')).toHaveCount(0);
 });
+
+test('composer sends with Enter, preserves Shift+Enter and IME composition', async ({ page }) => {
+  await supplyAnswers(page, ['First answer', 'Second answer']);
+  const input = page.locator('#question');
+  await input.fill('First line');
+  await input.press('Shift+Enter');
+  await input.press('a');
+  await expect(input).toHaveValue('First line\na');
+  await input.dispatchEvent('keydown', { key: 'Enter', isComposing: true });
+  await expect(page.locator('.conversation-turn')).toHaveCount(0);
+  await input.press('Enter');
+  await expect(page.locator('.conversation-turn')).toHaveCount(1);
+  await expect(page.locator('.response-status')).toHaveText('Ready');
+  await input.fill('Follow up');
+  await input.press('Control+Enter');
+  await expect(page.locator('.conversation-turn')).toHaveCount(2);
+});
+
+test('code can expand, close and reopen without losing its proposal', async ({ page }) => {
+  await supplyAnswers(page, ['Here is the implementation.\n```python\nprint("hello")\n```']);
+  await ask(page, 'Implement it');
+  const code = page.getByRole('region', { name: 'Code workspace', exact: true });
+  await expect(code).toBeVisible();
+  const normal = (await code.boundingBox())!.width;
+  await page.getByRole('button', { name: 'Expand code workspace', exact: true }).click();
+  await expect.poll(async () => (await code.boundingBox())!.width).toBeGreaterThan(normal);
+  await page.getByRole('button', { name: 'Restore code width', exact: true }).click();
+  await expect.poll(async () => (await code.boundingBox())!.width).toBeCloseTo(normal, 0);
+  await page.getByRole('button', { name: 'Close code workspace', exact: true }).click();
+  await expect(code).toHaveCount(0);
+  await page.getByRole('button', { name: 'Show code', exact: true }).click();
+  await expect(code.getByRole('button', { name: 'Accept changes' })).toBeVisible();
+  await page.setViewportSize({ width: 850, height: 950 });
+  await expect
+    .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth))
+    .toBe(true);
+});
