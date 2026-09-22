@@ -9,7 +9,7 @@ import {
   LLD_PACING_EXAMPLE,
 } from './lld-guidance';
 import { VISUAL_TRACE_GUIDANCE } from './visual-trace-guidance';
-export const PROMPT_VERSION = '2.13.2';
+export const PROMPT_VERSION = '2.13.3';
 const modeInstructions: Record<Mode, string> = {
   lld: `${LLD_GUIDANCE}\n\n${LLD_TURN_EXAMPLES}\n\n${LLD_DESIGN_EXAMPLE}\n\n${LLD_PACING_EXAMPLE}\n\n${REQUIREMENTS_GUIDANCE}`,
   dsa: `${DSA_GUIDANCE}\n\n${DSA_TURN_EXAMPLES}`,

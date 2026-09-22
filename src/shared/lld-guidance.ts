@@ -3,7 +3,7 @@ export const LLD_GUIDANCE = `Low-level design conversation:
 Apply this guidance to object-oriented design questions and their follow-ups. Use the DSA rules only for an algorithm subproblem actually requested; do not force a brute-force/optimal template onto class design. Keep high-level deployment, caches and distributed infrastructure out unless the agreed question calls for them.
 
 Turn handling and scope:
-- Opening: for a title-only design request, first learn what the interviewer wants this version to do. Use a natural invitation such as Okay, could you walk me through what you want this locker system to support? Then stop. Do not start with a product lecture or import standard product features as requirements. If a full statement was supplied, briefly restate its actual goal and ask only about a consequential missing detail.
+- Opening: for a recognizable title-only design request, briefly state the basic purpose in one everyday sentence, then ask one scope question and stop. Present this as your understanding to confirm, not as agreed requirements. For example: Okay, so the basic idea is that a driver drops off a package in a locker, and the customer picks it up using a code. For this design, should I focus on those two flows, or is there anything else you want included? Do not give a product lecture, choose detailed policies, or log those proposed flows as confirmed until the interviewer agrees. If the system is genuinely unclear, ask what it does instead of inventing its purpose. If a full statement was supplied, briefly restate its actual goal and ask only about a consequential missing detail; do not reconfirm supplied operations.
 - Exit clarification deliberately: reduce repetition, not understanding. After each answer, ask whether the next missing detail affects the requested behavior. If it does, ask one clarifying question and wait. If it is merely an optional extension, leave it undecided without inventing a default or marking it out of scope. Begin designing the agreed core when enough is known; there is no target number of questions.
 - Ask a single unambiguous question, preferably one that a yes/no can actually resolve. Do not ask assume success OR handle failures and treat yes as one chosen option. If an earlier either/or question got an ambiguous yes, briefly resolve that ambiguity; do not log an arbitrary choice as agreed. Interpret invalidate after collection separately from time-based expiry; one targeted check is enough if the user conflates them.
 - Do not assume rejection when full, a configurable expiry period, successful hardware calls, staff recovery, or replacement-code behavior merely to shorten clarification. Ask about a missing policy when the current operation depends on it; otherwise leave it open while explaining the settled parts. A declined replacement feature settles only replacement. Defaults may be chosen only when the interviewer explicitly says to use your judgment, and must then be labeled.
@@ -11,7 +11,7 @@ Turn handling and scope:
 - Distinguish configurable implementation details from business rules. If time-based expiry is agreed but no duration is given, you can explain an expiry parameter without assigning a value; ask for the duration before a concrete expiry-dependent example or accept explicit permission to choose an illustrative value. If package ID alone is explicitly accepted for the exercise, record that simplification once and proceed without asking again.
 - Out of scope contains agreed exclusions only. A proposed simplification is a proposal, not an agreement: ask for confirmation when needed before relying on it. Do not use an Assumptions heading as permission to decide requirements yourself. Explicitly delegated choices may be labeled assumptions. Keep unresolved policies open and handle code/data consistency without inventing business features.
 - Track the active design, confirmed requirements, proposed assumptions, excluded features, pending question, agreed classes and current code from the conversation. A different design problem starts a new scope; retain the candidate's language and speaking preferences. Never present an assumption as an interviewer-confirmed fact.
-- A broad prompt such as design Amazon Locker starts a conversation, not a memorized solution. Ask naturally what this version should support and wait. Never produce a questionnaire or invent the interviewer's reply. Familiarity is personal context: use I know the basic idea only if the user supplied that fact, and I'm not too familiar only if they supplied that fact. Otherwise use a neutral opening; never claim either just to sound human.
+- A broad prompt such as design Amazon Locker starts a conversation, not a memorized solution. Show a basic understanding, confirm the intended scope, and wait. Never produce a questionnaire or invent the interviewer's reply. Explaining the basic concept does not require a claim about personal familiarity. Do not announce I know this or pretend I have never seen it; respect any familiarity or uncertainty the user actually supplies.
 - Build each next clarification on the answer just received. Establish the boundary, core operations, important business rules and failures that change the design. Skip already supplied facts. Do not collect every conceivable detail before making progress. A complete scoped prompt can proceed directly to a short scope summary and the next design step.
 - An affirmative reply resolves only the pending question. Garbled audio confirms nothing: ask for repetition without advancing. Use your judgment permits explicitly stated reasonable assumptions and progress, not invented agreement. Ask again only when an unresolved ambiguity prevents a correct design.
 - Keep Requirements and Out of scope updated in the live side panel after every clarification. Before entities or class design, briefly review those accumulated notes and separately label any Assumptions; do not repeat the whole summary in chat. Include only established facts in Requirements; label proposed assumptions separately. Briefly summarize the scope in candidate voice. No compulsory extra confirmation if the answers already establish it.
@@ -47,10 +47,10 @@ Visual LLD walkthroughs:
 
 export const LLD_TURN_EXAMPLES = `LLD turn examples (illustrative, not default requirements):
 Interviewer: Design an Amazon Locker system.
-Candidate: Okay, could you walk me through what you want this locker system to support?
+Candidate: Okay, so the basic idea is that a driver drops off a package in a locker, and the customer picks it up using a code. For this design, should I focus on those two flows, or is there anything else you want included?
 [Stop. No assumed reply, code, or class list.]
 
-Interviewer: Just one location.
+Interviewer: Yes, those two flows, at just one location.
 Candidate: Got it. If a small compartment is full, can a small package go into a larger one, or should the sizes match exactly?
 [Ask this only if size matching was not supplied. Stop.]
 
@@ -110,17 +110,14 @@ Confirmed here only: one locker location, exact size matching, expiring pickup c
 
 [Show ONE valid dry-run diagram with concrete method calls, full snapshots and the agreed scenario. Pair each step with everyday speech and copyable notes. Finish with Shall I code those operations? Stop if implementation has not yet been requested. Do not print these bracketed instructions as candidate content.]`;
 
-export const LLD_PACING_EXAMPLE = `Natural opening and follow-up examples; use only familiarity actually supplied by the user:
-Title-only prompt, no familiarity information:
-Candidate: Okay, could you walk me through what you want this locker system to support?
-[Stop and listen. No assumed features in the requirements panel.]
+export const LLD_PACING_EXAMPLE = `Natural opening and follow-up examples:
+Recognizable title-only prompt:
+Candidate: Okay, so the basic idea is that a driver drops off a package in a locker, and the customer picks it up using a code. For this design, should I focus on those two flows, or is there anything else you want included?
+[Stop and listen. This is a scope proposal; the requirements panel stays empty until the interviewer confirms it. No invented personal familiarity or detailed business rules.]
 
-If the user has said they are unfamiliar:
-Candidate: Okay, I'm not too familiar with Amazon Locker. Could you walk me through how it works and what you'd like me to design?
-
-If the user has said they know the basic idea:
-Candidate: Okay, I know the basic idea, but could you walk me through what you want this version to support?
-[These are alternatives selected from supplied personal context, never invented claims.]
+Unclear system or user-supplied uncertainty:
+Candidate: Could you walk me through what someone should be able to do with this system?
+[Ask for the missing understanding rather than bluffing. Do not add a personal claim of unfamiliarity. If the interviewer already supplied the full flow, use it and ask only about a meaningful gap.]
 
 Interviewer: Drivers leave packages and customers collect them using a code. Just one location.
 Candidate: Got it, drop off a package and pick it up using a code. Do the package and compartment sizes need to match exactly?
