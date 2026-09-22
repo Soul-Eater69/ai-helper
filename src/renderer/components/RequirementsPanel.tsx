@@ -2,7 +2,15 @@ import { useMemo, useState } from 'react';
 import { currentRequirements, requirementsAsNotes } from '../../shared/requirements';
 import type { Workspace } from '../hooks/useSession';
 
-export default function RequirementsPanel({ work }: { work: Workspace }) {
+export default function RequirementsPanel({
+  work,
+  expanded,
+  toggleExpanded,
+}: {
+  work: Workspace;
+  expanded: boolean;
+  toggleExpanded: () => void;
+}) {
   const board = useMemo(() => currentRequirements(work.turns), [work.turns]);
   const [copied, setCopied] = useState('');
   const notes = board ? requirementsAsNotes(board) : '';
@@ -26,6 +34,14 @@ export default function RequirementsPanel({ work }: { work: Workspace }) {
           {notes && copied === notes ? 'Copied' : 'Copy notes'}
         </button>
       </div>
+      <button
+        type="button"
+        className="subtle requirements-expand"
+        aria-expanded={expanded}
+        onClick={toggleExpanded}
+      >
+        {expanded ? 'Collapse notes' : 'Expand notes'}
+      </button>
       <p className="field-help">Agreed points appear here as you go.</p>
       {(
         [

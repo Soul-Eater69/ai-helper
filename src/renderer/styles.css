@@ -2028,3 +2028,26 @@ svg {
     animation: none;
   }
 }
+
+.app-shell.notes-expanded .sidebar {
+  width: min(440px, 42vw);
+}
+.notes-expanded .requirements-panel {
+  max-height: 65vh;
+}
+.notes-expanded .requirement-point {
+  font-size: 14px;
+  line-height: 1.6;
+}
+.notes-expanded .requirements-panel h3 {
+  font-size: 14px;
+}
+.requirements-expand {
+  margin-top: 8px;
+  font-size: 12px;
+}
+@media (max-width: 700px) {
+  .app-shell.notes-expanded .sidebar {
+    width: min(380px, 85vw);
+  }
+}

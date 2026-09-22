@@ -29,6 +29,7 @@ export default function App() {
   const [source, setSource] = useState<'system' | 'microphone'>('system');
   const [historyOpen, setHistoryOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [notesExpanded, setNotesExpanded] = useState(false);
   const [codeVisibility, setCodeVisibility] = useState<boolean | null>(null);
   const latestQuestion = work.turns.at(-1)?.question;
   const latestTurnId = work.turns.at(-1)?.id;
@@ -42,7 +43,9 @@ export default function App() {
   const showCode = codeVisibility ?? (!!work.proposal || work.doc.code !== INITIAL_CODE);
   const listening = ['ready', 'connecting', 'reconnecting'].includes(work.audioStatus);
   return (
-    <div className={`app-shell ${sidebarOpen ? '' : 'sidebar-collapsed'}`}>
+    <div
+      className={`app-shell ${sidebarOpen ? '' : 'sidebar-collapsed'} ${notesExpanded ? 'notes-expanded' : ''}`}
+    >
       <aside className="sidebar" id="session-sidebar" inert={!sidebarOpen}>
         <div className="brand">
           <span className="brand-symbol">
@@ -53,7 +56,11 @@ export default function App() {
         <button className="new-session" onClick={() => void work.reset()}>
           <Plus size={17} /> New session
         </button>
-        <RequirementsPanel work={work} />
+        <RequirementsPanel
+          work={work}
+          expanded={notesExpanded}
+          toggleExpanded={() => setNotesExpanded((value) => !value)}
+        />
         <details className="context-notes">
           <summary>Requirements &amp; context</summary>
           <p>Pin constraints to keep them available throughout this session.</p>

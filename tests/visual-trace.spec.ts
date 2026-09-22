@@ -344,6 +344,19 @@ test('requirements accumulate beside chat, corrections replace notes, and new se
   await expect(panel.getByRole('heading', { name: 'Requirements', exact: true })).toBeVisible();
   await ask(page, 'One physical location');
   await expect(panel).toContainText('One physical location.');
+  const compactWidth = (await panel.boundingBox())!.width;
+  await panel.getByRole('button', { name: 'Expand notes' }).click();
+  await expect(panel.getByRole('button', { name: 'Collapse notes' })).toHaveAttribute(
+    'aria-expanded',
+    'true',
+  );
+  expect((await panel.boundingBox())!.width).toBeGreaterThan(compactWidth);
+  await panel.getByRole('button', { name: 'Collapse notes' }).click();
+  await expect(panel.getByRole('button', { name: 'Expand notes' })).toHaveAttribute(
+    'aria-expanded',
+    'false',
+  );
+
   await ask(page, 'Exact match, notifications are out of scope');
   await expect(panel.locator('li')).toHaveCount(3);
   await expect(panel).toContainText('Notifications.');

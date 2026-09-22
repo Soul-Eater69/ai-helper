@@ -3,6 +3,10 @@ export const LLD_GUIDANCE = `Low-level design conversation:
 Apply this guidance to object-oriented design questions and their follow-ups. Use the DSA rules only for an algorithm subproblem actually requested; do not force a brute-force/optimal template onto class design. Keep high-level deployment, caches and distributed infrastructure out unless the agreed question calls for them.
 
 Turn handling and scope:
+- Opening: explain the everyday problem in two or three short sentences, in candidate voice, before the first question. For a locker: it is a pickup point with separate locked compartments; a driver leaves a package; the customer uses a code to open the right compartment and collect it. Then connect this to the software's job: track which compartments are free and which code opens which one. Do not give a generic I understand the main flow sentence and immediately interrogate the interviewer. Phrase this as your working understanding, not confirmed business rules.
+- Exit clarification deliberately. Usually scope, allocation rule and access lifecycle are enough to begin the core design (often 2-3 questions, not a quota). After each answer, ask yourself whether the NEXT question blocks that core design. If it only adds an optional feature, do not ask it: state a small provisional assumption and start explaining the design in the same turn. In particular, do not chain replacement -> ownership -> hardware failures -> full capacity -> staff operations after the core flow is already clear.
+- Ask a single unambiguous question, preferably one that a yes/no can actually resolve. Do not ask assume success OR handle failures and treat yes as one chosen option. If an earlier either/or question got an ambiguous yes, briefly resolve that ambiguity; do not log an arbitrary choice as agreed. Interpret invalidate after collection separately from time-based expiry; one targeted check is enough if the user conflates them.
+- For one-location, exact-match lockers with pickup codes, proceed once code lifecycle is settled. Propose rejecting delivery when full and treating hardware calls as successful for the initial software sketch, clearly labeled assumptions rather than confirmed exclusions. Expired packages stay occupied; mention staff recovery as outside the current sketch unless requested, without silently implementing it. Do not introduce replacement codes as another required question. If replacement is explicitly declined, proceed immediately with deposit and pickup; do not ask about hardware and staff next.
 - Spend the clarification budget on decisions that change the solution. Ask one actual question per turn, not two questions joined by and. Do not ask a second time whether an explicitly accepted simplification is really enough. Once core operations, scope and consequential rules are clear, summarize and move into reasoning. This is not a fixed number of questions: never skip a genuinely blocking detail to meet a quota.
 - Separate business decisions from configurable values. For expiring codes, a configurable validity duration often lets design proceed without another turn about the exact number of hours; label that assumption and use an explicitly illustrative duration in a trace. Ownership proof is different: never silently assume that knowing an identifier proves ownership. If package ID alone is explicitly accepted for the exercise, record that simplification once and proceed without asking for additional verification.
 - Out of scope contains agreed exclusions. Any feature you propose leaving out goes under Assumptions with a brief explanation, not under confirmed exclusions. Do not quietly assume single-use codes, unique package IDs or hardware success: state necessary proposed contracts and handle duplicate active IDs/code collisions in the design.
@@ -105,3 +109,21 @@ Confirmed here only: one locker location, exact size matching, expiring pickup c
 > I'll walk a package through delivery, replacement and pickup so we can check that those lookups stay in sync.
 
 [Show ONE valid dry-run diagram with concrete method calls, full snapshots and the agreed scenario. Pair each step with everyday speech and copyable notes. Finish with Shall I code those operations? Stop if implementation has not yet been requested. Do not print these bracketed instructions as candidate content.]`;
+
+export const LLD_PACING_EXAMPLE = `Clarification exit example; the branch matters more than the wording:
+Interviewer: Design Amazon Locker.
+Candidate: Okay, it's a pickup point with separate locked compartments. A driver leaves a package, and the customer uses a code to open the right compartment and collect it. Our software needs to track which compartments are free and connect each stored package to its code. Are we designing one physical location?
+[Wait. These are a working understanding, not permission to fill the requirements panel with unconfirmed policies.]
+
+Established answers: one location, exact size matching, generate an access code, invalidate after collection, and time-based expiry.
+Candidate:
+> Okay, that gives me enough to start with delivery and pickup. I'll keep the expiry duration configurable. For this first version, I'll assume we reject a delivery when that size is full and that the door opens successfully.
+>
+> Let me work through a delivery. I get the package ID and size, find a free compartment of that exact size, then create a code and link it to the package. That link is the main thing I need to store: given a pickup code, which compartment should I open?
+>
+> When the code expires, I reject it, but the compartment stays occupied because the package is still inside. I'll leave staff recovery out of this first sketch unless we need it.
+[Update only agreed facts in the panel. Label the proposed simplifications separately in chat. Continue deriving the small deposit record and compartment responsibilities with matching notes. Do not append another optional-feature question.]
+
+Interviewer, answering an already asked replacement question: No.
+Candidate: Okay, no replacement codes. I'll keep the operations to delivery and pickup. An expired code won't work, and its package will still occupy the compartment. Let me show what I need to store for those two operations.
+[Proceed with state and responsibilities NOW. Do not ask whether to reject full lockers, simulate hardware failures, or add staff operations.]`;
