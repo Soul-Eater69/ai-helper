@@ -14,6 +14,26 @@ function visibleText(children: ReactNode): string {
     .join('');
 }
 
+const sectionActions: Record<string, string> = {
+  'brute force': 'Explain',
+  'better approach': 'Explain',
+  'optimal approach': 'Explain',
+  algorithm: 'Write',
+  'while coding': 'Explain as you code',
+  'dry run': 'Walk through',
+  'edge cases': 'Check',
+  complexity: 'Reference',
+};
+function SectionHeading({ children }: { children?: ReactNode }) {
+  const action = sectionActions[visibleText(children).trim().toLowerCase()];
+  return (
+    <h2>
+      {children}
+      {action && <span className="section-action">{action}</span>}
+    </h2>
+  );
+}
+
 // Hide dangling model-generated headings, including headings still awaiting streamed content.
 function removeEmptyHeadings() {
   return (tree: { children: Array<{ type: string; depth?: number }> }) => {
@@ -34,6 +54,7 @@ export default function AnswerContent({ text }: { text: string }) {
       components={{
         a: ({ children }) => <span>{children}</span>,
         img: () => null,
+        h2: SectionHeading,
         p: ({ children }) => {
           const metric = /^(?:Time|Space|Auxiliary space|Extra space)(?: complexity)?\s*:/i.test(
             visibleText(children),
@@ -58,12 +79,26 @@ export default function AnswerContent({ text }: { text: string }) {
             <pre>{children}</pre>
           );
         },
-        blockquote: ({ children }) => (
-          <aside className="spoken-guidance" data-testid="spoken-guidance" aria-label="Say this">
-            <span className="spoken-label">Say this</span>
-            <div>{children}</div>
-          </aside>
-        ),
+        blockquote: ({ children }) => {
+          const text = visibleText(children).trim();
+          if (
+            text.startsWith('[Context needed]') ||
+            (text.startsWith('[C') && '[Context needed]'.startsWith(text))
+          ) {
+            return (
+              <aside className="context-needed" aria-label="Personal context needed">
+                <span className="spoken-label">Personal context needed · not spoken</span>
+                <p>{text.slice('[Context needed]'.length).trim()}</p>
+              </aside>
+            );
+          }
+          return (
+            <aside className="spoken-guidance" data-testid="spoken-guidance" aria-label="Say this">
+              <span className="spoken-label">Say this</span>
+              <div>{children}</div>
+            </aside>
+          );
+        },
         table: ({ children }) => (
           <div
             className="answer-table"

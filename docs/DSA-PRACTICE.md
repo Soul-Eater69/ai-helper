@@ -71,3 +71,21 @@ problem statements do not need variant confirmation. An unclear reply does not
 confirm a constraint, and correcting a constraint updates only the affected reasoning.
 Code can be hidden and reopened without losing working code or proposals. Explicit
 new-problem transitions hide the panel; a new implementation proposal opens it again.
+
+### Following the conversation
+
+Response guidance selects the current step: clarification, approach discussion,
+implementation, validation or a focused follow-up. A clarification waits for the
+answer; implementation follows explicit approval. Approach notes use **Explain**,
+**Write**, **Walk through**, **Check** and **Reference** labels to distinguish speech
+from supporting material. These labels are reading aids, not instructions to say
+aloud or a mandatory checklist for every answer.
+
+The agreed objective stays fixed until the interviewer changes it. For example,
+exactly two products totaling a voucher value must not silently become buying the
+maximum number of products within a budget.
+
+Behavioral answers use supplied personal facts. When a needed fact is missing, a
+separate **Personal context needed · not spoken** note requests it. This prevents
+assistant-style coaching from appearing as the candidate's spoken answer; it does
+not authorize invented experience. Live model adherence still needs evaluation.

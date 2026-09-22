@@ -1342,3 +1342,27 @@ svg {
 .code-toolbar > .icon-button {
   flex-shrink: 0;
 }
+
+.section-action {
+  display: inline-block;
+  margin-left: 10px;
+  padding: 3px 7px;
+  border-radius: 6px;
+  background: #eef1f6;
+  color: #59657b;
+  font-size: 10px;
+  font-weight: 500;
+  vertical-align: middle;
+}
+.context-needed {
+  padding: 14px 18px;
+  margin: 16px 0;
+  border: 1px solid #decda9;
+  border-radius: 12px;
+  background: #fffaf0;
+  color: #574725;
+}
+.context-needed p {
+  white-space: pre-line;
+  margin: 0;
+}
