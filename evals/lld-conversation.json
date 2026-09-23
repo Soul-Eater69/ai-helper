@@ -105,5 +105,26 @@
         "review": "Answer directly: justify it using actual required data or simplify if no separate lifecycle/identity needs it. Do not defend extra classes just because an example used them; no full design replay."
       }
     ]
+  },
+  {
+    "name": "locker-workflow-clarification",
+    "turns": [
+      {
+        "question": "Design a locker system where delivery staff can deposit a package and customers pick it up using a code.",
+        "review": "Ask one consequential domain question in plain speech, such as supported sizes or package/code relationship. No automatic single/multiple-location opener and no invented single-location requirement."
+      },
+      {
+        "question": "Small, medium and large. Exact size matching. If that size is full, reject the deposit. Each package has its own code and compartment. Return the code; another service sends it to the customer.",
+        "notes": ["exact", "code"],
+        "review": "Consume ALL supplied answers, including full capacity and notification. Ask only a still-open consequential rule such as expiry. Do not re-ask capacity, code sharing or notification; do not fall back to a geography checklist."
+      },
+      {
+        "question": "Codes last 24 hours. Reject expired pickup. Returns are outside this system, and we do not need replacement codes.",
+        "design": true,
+        "notes": ["24", "expir"],
+        "exclusions": ["return", "replacement"],
+        "review": "Begin real deposit/pickup design, beyond a class list. No return/replacement/authentication question chain. Expiry leaves occupancy unchanged. Do not assert single-location scope was confirmed."
+      }
+    ]
   }
 ]

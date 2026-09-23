@@ -4,7 +4,7 @@ import { SPOKEN_STYLE } from './spoken-style';
 import { DSA_GUIDANCE, DSA_TURN_EXAMPLES } from './dsa-guidance';
 import { LLD_GUIDANCE, LLD_TURN_EXAMPLES, LLD_DESIGN_EXAMPLE } from './lld-guidance';
 import { VISUAL_TRACE_GUIDANCE } from './visual-trace-guidance';
-export const PROMPT_VERSION = '2.14.1';
+export const PROMPT_VERSION = '2.14.2';
 const modeInstructions: Record<Mode, string> = {
   lld: `${LLD_GUIDANCE}\n\n${LLD_TURN_EXAMPLES}\n\n${LLD_DESIGN_EXAMPLE}\n\n${REQUIREMENTS_GUIDANCE}`,
   dsa: `${DSA_GUIDANCE}\n\n${DSA_TURN_EXAMPLES}`,
