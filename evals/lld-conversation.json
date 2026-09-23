@@ -32,10 +32,22 @@
   {
     "name": "examples-are-not-agreement",
     "history": [
-      { "role": "user", "content": "Design a parking lot." },
-      { "role": "assistant", "content": "Should we support different vehicle sizes?" },
-      { "role": "user", "content": "Yes." },
-      { "role": "assistant", "content": "Should I choose the first available spot?" }
+      {
+        "role": "user",
+        "content": "Design a parking lot."
+      },
+      {
+        "role": "assistant",
+        "content": "Should we support different vehicle sizes?"
+      },
+      {
+        "role": "user",
+        "content": "Yes."
+      },
+      {
+        "role": "assistant",
+        "content": "Should I choose the first available spot?"
+      }
     ],
     "turns": [
       {
@@ -57,6 +69,40 @@
       {
         "question": "Why not free the compartment when the pickup code expires?",
         "review": "Briefly explain that the package is still inside. No rewrite, restart or repeated full walkthrough."
+      }
+    ]
+  },
+  {
+    "name": "locker-return-out-of-scope",
+    "history": [
+      {
+        "role": "user",
+        "content": "Design a locker system. Delivery staff deposit packages and customers collect using a code. One physical location, exact size matching."
+      },
+      {
+        "role": "assistant",
+        "content": "Should the pickup code expire?"
+      },
+      {
+        "role": "user",
+        "content": "It stays valid until its expiry date. After expiry reject pickup and return the package."
+      },
+      {
+        "role": "assistant",
+        "content": "Does delivery staff handle removing the expired package?"
+      }
+    ],
+    "turns": [
+      {
+        "question": "Delivery, but that return process is not required here.",
+        "design": true,
+        "notes": ["exact", "expir"],
+        "exclusions": ["return"],
+        "review": "Must proceed beyond a class/responsibility list: explain deposit and pickup, fields and code lookup, successful updates and rejected pickup leaving occupancy unchanged. Do not add staff-return methods or invent expiry duration. Proposals and unresolved physical-completion assumptions must be distinguished from confirmed facts. Short casual spoken paragraphs, meaningful endpoint, no permission to sketch entities."
+      },
+      {
+        "question": "Why do you need a separate deposit record?",
+        "review": "Answer directly: justify it using actual required data or simplify if no separate lifecycle/identity needs it. Do not defend extra classes just because an example used them; no full design replay."
       }
     ]
   }

@@ -8,7 +8,7 @@ For actual model output, set `OPENAI_API_KEY` and `AI_HELPER_EVAL_MODEL` in the 
 npm run eval:lld -- --live
 ```
 
-Optional `AI_HELPER_EVAL_REASONING` accepts `auto`, `none`, or `medium`; use the same choice as the app. The provider only applies this option to models supported by its existing implementation. The runner uses the app's actual answer provider, prompt builder, schemas and note conversion. It does not read or modify the desktop credential vault. Use a model available to your API account. Requests use the provider's existing retry policy, so eight planned turns can result in more than eight HTTP attempts.
+Optional `AI_HELPER_EVAL_REASONING` accepts `auto`, `none`, or `medium`; use the same choice as the app. The provider only applies this option to models supported by its existing implementation. The runner uses the app's actual answer provider, prompt builder, schemas and note conversion. It does not read or modify the desktop credential vault. Use a model available to your API account. Requests use the provider's existing retry policy, so planned turns can result in additional HTTP attempts.
 
 This is a paid provider evaluation, not a microphone/UI test. Output is saved incrementally in ignored `.eval-results/*.json`, including the prompt version, chosen model, questions, raw answers, automated checks, review criteria and answer-provider timing. First delta is not necessarily the first visible spoken word. Transcription and routing latency are not measured. Token usage/cost is not collected by the existing provider adapter; inspect provider usage separately.
 
