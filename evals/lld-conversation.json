@@ -126,5 +126,53 @@
         "review": "Begin real deposit/pickup design, beyond a class list. No return/replacement/authentication question chain. Expiry leaves occupancy unchanged. Do not assert single-location scope was confirmed."
       }
     ]
+  },
+  {
+    "name": "logger-boundary-transfer",
+    "turns": [
+      {
+        "question": "Design a logging service.",
+        "review": "Resolve what logging service means if needed (library versus collecting logs from other applications). Boundary-first is appropriate here. No irrelevant location, compartment, ticket or vehicle questions."
+      },
+      {
+        "question": "An in-process library. INFO and ERROR only. Write to console and a file. Each destination has its own minimum level and either text or JSON formatting. Configured at startup. Single-threaded, synchronous. No network writes or rotation. Please walk through the design now.",
+        "review": "Proceed into design; do not ask a question to satisfy a quota. Connect destination-specific filtering and independently selectable formatting to responsibilities and interactions. Preserve single-threaded scope; no mandatory concurrency questions or invented guarantees."
+      }
+    ]
+  },
+  {
+    "name": "filesystem-relationship-transfer",
+    "turns": [
+      {
+        "question": "Design an in-memory filesystem. Single root, absolute paths, files store text. Support create, read, list and delete. No permissions, links or disk persistence.",
+        "review": "Skip roots, content storage and operations already supplied. Choose an unresolved behavior affecting an operation, such as whether deleting a nonempty directory recursively deletes children. No unrelated lifecycle checklist."
+      },
+      {
+        "question": "Deleting a nonempty directory should fail, and missing paths or missing parents are errors. Start the design.",
+        "review": "Explain hierarchy, path resolution and checked deletion. Do not infer move/rename support or re-ask settled structure. Begin concrete design rather than stopping at File and Folder."
+      }
+    ]
+  },
+  {
+    "name": "elevator-context-transfer",
+    "turns": [
+      {
+        "question": "Design an elevator controller for three cars serving floors 0 to 9. People call up or down from a floor and choose their destination inside.",
+        "review": "Absorb car/floor counts and request types. A simulation versus hardware boundary is useful because it changes event/movement interfaces. Counts are not banned but must not be re-asked here."
+      },
+      {
+        "question": "Use a simulation with explicit ticks. Single-threaded, no doors or emergencies. You can choose a simple dispatch rule and start the design.",
+        "review": "Choose and label a simple dispatch policy as delegated, then explain controller/car state and tick behavior. No second permission request, hardware question chain or claim that the chosen algorithm was required."
+      }
+    ]
+  },
+  {
+    "name": "unseen-domain-transfer",
+    "turns": [
+      {
+        "question": "Design a library lending system. A book title can have several physical copies. Members borrow a specific copy and return it. No fines, reservations or notifications.",
+        "review": "Generalize beyond prompt examples: a useful missing rule might be per-member borrowing limits or loan due dates. Do not ask already settled title/copy relationship or reopen exclusions. Question must have a concrete design consequence."
+      }
+    ]
   }
 ]
