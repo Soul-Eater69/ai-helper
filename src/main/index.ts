@@ -1,3 +1,6 @@
+import { writeFile } from 'node:fs/promises';
+import { Diagnostics } from './diagnostics';
+import { PROMPT_VERSION } from '../shared/prompts';
 import { app, BrowserWindow, ipcMain, safeStorage, session, desktopCapturer } from 'electron';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -10,6 +13,7 @@ import { AssistantService, openAIProvider } from './assistant';
 import { SpeechService } from './speech';
 import { TranscriptionService } from './transcription';
 import {
+  diagnosticSignalSchema,
   settingsSchema,
   answerRequestSchema,
   speechRequestSchema,
@@ -17,6 +21,7 @@ import {
   type AppEvent,
 } from '../shared/contracts';
 
+let diagnostics: Diagnostics | undefined;
 let window: BrowserWindow | undefined;
 let assistant: AssistantService;
 let transcription: TranscriptionService;
@@ -26,6 +31,7 @@ const answerGate = new RequestGate();
 const speechGate = new RequestGate();
 const speech = new SpeechService();
 const cancelSpeech = () => {
+  diagnostics?.record('router.cancel');
   speechGate.cancel();
   speech.cancel();
 };
@@ -34,6 +40,7 @@ const entry = dev
   ? 'http://127.0.0.1:5173/'
   : pathToFileURL(join(__dirname, '../renderer/index.html')).href;
 const emit = (event: AppEvent) => {
+  diagnostics?.record(event.type, event);
   if (window && !window.isDestroyed()) window.webContents.send('app:event', event);
 };
 
@@ -49,8 +56,38 @@ async function boot(): Promise<void> {
     encrypt: (value) => safeStorage.encryptString(value),
     decrypt: (value) => safeStorage.decryptString(value),
   });
+  diagnostics = new Diagnostics(join(app.getPath('userData'), 'diagnostics'));
+  diagnostics.protect((await vault.key()) ?? '');
+  diagnostics.record('app.start', {
+    version: app.getVersion(),
+    platform: process.platform,
+    arch: process.arch,
+    electron: process.versions.electron,
+    promptVersion: PROMPT_VERSION,
+  });
+  let chunks = 0,
+    bytes = 0,
+    lastChunkAt = 0,
+    lastRendererAt = 0;
+  let expectedBeat = performance.now() + 5000;
+  const heartbeat = setInterval(() => {
+    diagnostics?.record('app.heartbeat', {
+      lagMs: Math.max(0, Math.round(performance.now() - expectedBeat)),
+      transcription: transcription?.diagnostics(),
+      audioChunks: chunks,
+      audioBytes: bytes,
+      lastChunkAt,
+      lastRendererAt,
+    });
+    expectedBeat = performance.now() + 5000;
+    chunks = 0;
+    bytes = 0;
+  }, 5000);
+  heartbeat.unref();
   assistant = new AssistantService(openAIProvider, emit);
-  transcription = new TranscriptionService(emit);
+  transcription = new TranscriptionService(emit, (event, details) =>
+    diagnostics?.record(event, details),
+  );
   window = new BrowserWindow({
     width: 1500,
     height: 940,
@@ -77,14 +114,37 @@ async function boot(): Promise<void> {
         !trusted(event.senderFrame.url)
       )
         throw new Error('Untrusted request');
-      return fn(input);
+      const started = performance.now();
+      const callId = crypto.randomUUID();
+      // Only validated, explicitly selected request fields are logged below.
+      diagnostics?.record('ipc.start', { channel, callId });
+      try {
+        const result = await fn(input);
+        diagnostics?.record('ipc.done', {
+          channel,
+          callId,
+          durationMs: Math.round(performance.now() - started),
+        });
+        return result;
+      } catch (error) {
+        diagnostics?.record('ipc.error', {
+          channel,
+          callId,
+          durationMs: Math.round(performance.now() - started),
+        });
+        throw error;
+      }
     });
   handle('settings:get', async () => ({
     settings: await vault.settings(),
     hasKey: !!(await vault.key()),
   }));
   handle('settings:save', (input) => vault.saveSettings(settingsSchema.parse(input)));
-  handle('key:set', (input) => vault.setKey(z.string().trim().min(10).max(500).parse(input)));
+  handle('key:set', (input) => {
+    const key = z.string().trim().min(10).max(500).parse(input);
+    diagnostics?.protect(key);
+    return vault.setKey(key);
+  });
   handle('key:delete', async () => {
     cancelSpeech();
     answerGate.cancel();
@@ -96,11 +156,25 @@ async function boot(): Promise<void> {
   });
   handle('answer:start', async (input) => {
     const request = answerRequestSchema.parse(input);
+    diagnostics?.record('answer.request', {
+      id: request.id,
+      question: request.question,
+      historyCount: request.history.length,
+      historyChars: request.history.reduce((n, x) => n + x.content.length, 0),
+      codeChars: request.code.length,
+      contextChars: request.context.length,
+      imageCount: request.images?.length ?? 0,
+    });
     const ticket = answerGate.begin();
     assistant.cancel();
     const key = await vault.key();
     if (!key) throw new Error('Add your OpenAI API key in Settings first.');
     const settings = await vault.settings();
+    diagnostics?.record('answer.config', {
+      id: request.id,
+      model: settings.model,
+      reasoning: settings.answerReasoning,
+    });
     if (answerGate.isCurrent(ticket)) void assistant.answer(request, settings, key);
   });
   handle('answer:cancel', () => {
@@ -156,27 +230,83 @@ async function boot(): Promise<void> {
     if (!key) throw new Error('Add your OpenAI API key in Settings first.');
     const settings = await vault.settings();
     if (!speechGate.isCurrent(ticket)) return { action: 'ignore' };
-    return speech.route(request, settings, key);
+    const routeId = crypto.randomUUID();
+    diagnostics?.record('router.start', {
+      routeId,
+      model: settings.routerModel || settings.model,
+      text: request.text,
+      finalize: request.finalize,
+    });
+    const started = performance.now();
+    try {
+      const decision = await speech.route(request, settings, key);
+      diagnostics?.record('router.done', {
+        routeId,
+        decision,
+        durationMs: Math.round(performance.now() - started),
+        current: speechGate.isCurrent(ticket),
+      });
+      return decision;
+    } catch (error) {
+      diagnostics?.record('router.error', {
+        routeId,
+        durationMs: Math.round(performance.now() - started),
+      });
+      throw error;
+    }
   });
   handle('speech:cancel', cancelSpeech);
   handle('audio:start', async (input) => {
     const source = z.enum(['system', 'microphone']).parse(input);
+    diagnostics?.record('audio.start', { source });
     const epoch = ++startEpoch;
     const key = await vault.key();
     if (!key) throw new Error('Add your OpenAI API key in Settings first.');
     const settings = await vault.settings();
     if (epoch !== startEpoch) return;
+    diagnostics?.record('audio.config', {
+      model: settings.transcriptionModel,
+      autoAnswer: settings.autoAnswer,
+    });
     await transcription.start(key, settings.transcriptionModel);
     if (epoch !== startEpoch) return;
     captureGrant = { source, expires: Date.now() + 30000 };
   });
   handle('audio:stop', (input) => {
     const finish = z.boolean().optional().parse(input);
+    diagnostics?.record('audio.stop', { finish: !!finish });
     startEpoch++;
     captureGrant = undefined;
     if (finish) return transcription.finish();
     transcription.stop();
   });
+  handle('diagnostics:export', async () => {
+    const { dialog } = await import('electron');
+    const result = await dialog.showSaveDialog(window!, {
+      title: 'Export diagnostics — includes conversation text',
+      defaultPath: `ai-helper-diagnostics-${Date.now()}.jsonl`,
+      filters: [{ name: 'Diagnostic log', extensions: ['jsonl'] }],
+    });
+    if (result.canceled || !result.filePath) return false;
+    const snapshot = await diagnostics!.snapshot();
+    await writeFile(result.filePath, snapshot, { mode: 0o600 });
+    return true;
+  });
+  ipcMain.on('diagnostics:signal', (event, input) => {
+    if (
+      !window ||
+      event.sender !== window.webContents ||
+      event.senderFrame !== window.webContents.mainFrame ||
+      !trusted(event.senderFrame.url)
+    )
+      return;
+    const parsed = diagnosticSignalSchema.safeParse(input);
+    if (!parsed.success) return;
+    if (parsed.data.event === 'renderer.heartbeat') lastRendererAt = Date.now();
+    diagnostics?.record(parsed.data.event, parsed.data);
+  });
+  window.on('unresponsive', () => diagnostics?.record('renderer.unresponsive'));
+  window.on('responsive', () => diagnostics?.record('renderer.responsive'));
   handle('sessions:list', () => vault.sessions());
   handle('sessions:save', (input) => vault.saveSession(savedSessionSchema.parse(input)));
   handle('sessions:delete', (input) => vault.deleteSession(z.string().max(100).parse(input)));
@@ -194,6 +324,9 @@ async function boot(): Promise<void> {
       input.byteLength % 2 !== 0
     )
       return;
+    chunks++;
+    bytes += input.byteLength;
+    lastChunkAt = Date.now();
     transcription.append(input);
   });
   session.defaultSession.setPermissionCheckHandler(
@@ -238,7 +371,8 @@ async function boot(): Promise<void> {
   });
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   window.webContents.on('will-navigate', (event) => event.preventDefault());
-  window.webContents.on('render-process-gone', () => {
+  window.webContents.on('render-process-gone', (_event, details) => {
+    diagnostics?.record('renderer.gone', { reason: details.reason, exitCode: details.exitCode });
     cancelSpeech();
     answerGate.cancel();
     startEpoch++;
@@ -246,6 +380,9 @@ async function boot(): Promise<void> {
     transcription.stop();
   });
   window.on('closed', () => {
+    clearInterval(heartbeat);
+    diagnostics?.record('app.window.closed');
+    void diagnostics?.close();
     cancelSpeech();
     answerGate.cancel();
     startEpoch++;
@@ -274,5 +411,12 @@ else {
       );
       app.quit();
     });
+  let quitting = false;
+  app.on('before-quit', (event) => {
+    if (quitting || !diagnostics) return;
+    event.preventDefault();
+    quitting = true;
+    void diagnostics.close().finally(() => app.quit());
+  });
   app.on('window-all-closed', () => app.quit());
 }

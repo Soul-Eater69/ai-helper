@@ -10,6 +10,7 @@ async function supplyAnswers(page: Page, answers: string[], autoAnswer = false) 
         emitAudioTest: (event: unknown) => listeners.forEach((fn) => fn(event)),
         desktop: {
           isDesktop: true,
+          exportDiagnostics: async () => true,
           getSettings: async () => ({
             hasKey: true,
             settings: {
@@ -441,4 +442,11 @@ test('pausing submits the last captured question and restart does not cancel its
   await emit({ type: 'audio.status', status: 'connecting' });
   await expect(page.locator('.response-status')).toHaveText('Ready');
   await expect(page.locator('.conversation-turn')).toContainText('Explain parking allocation');
+});
+
+test('diagnostics export is discoverable and reports success', async ({ page }) => {
+  await supplyAnswers(page, []);
+  await expect(page.getByText('Logs include conversation text.')).toBeVisible();
+  await page.getByRole('button', { name: 'Export diagnostics', exact: true }).click();
+  await expect(page.getByText('Diagnostics exported.')).toBeVisible();
 });

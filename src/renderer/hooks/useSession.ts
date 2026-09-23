@@ -197,7 +197,25 @@ export function useSession() {
       setSpeechStatus,
       (error) => setError(message(error)),
     );
+    const received = new Set<string>();
+    const heartbeat = setInterval(
+      () => desktopAPI.diagnostic?.({ event: 'renderer.heartbeat' }),
+      5000,
+    );
+    const reportError = () =>
+      desktopAPI.diagnostic?.({ event: 'renderer.error', value: 'uncaught error or rejection' });
+    window.addEventListener('error', reportError);
+    window.addEventListener('unhandledrejection', reportError);
     const event = (event: AppEvent) => {
+      if (event.type === 'answer.delta' && !received.has(event.id)) {
+        received.add(event.id);
+        if (received.size > 100) received.delete(received.values().next().value!);
+        desktopAPI.diagnostic?.({
+          event: 'renderer.answer.received',
+          id: event.id,
+          value: event.id === active.current?.id ? 'active' : 'stale',
+        });
+      }
       if (event.type.startsWith('answer.')) {
         if (!('id' in event) || event.id !== active.current?.id) return;
         if (event.type === 'answer.delta')
@@ -267,6 +285,9 @@ export function useSession() {
       setNotice('Audio sharing ended.');
     });
     return () => {
+      clearInterval(heartbeat);
+      window.removeEventListener('error', reportError);
+      window.removeEventListener('unhandledrejection', reportError);
       removeDesktop();
       removeDemo();
       speechQueue.current?.stop(true);

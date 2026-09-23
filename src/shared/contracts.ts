@@ -189,8 +189,27 @@ export type AppEvent =
       status: 'connecting' | 'ready' | 'reconnecting' | 'stopped' | 'error';
       message?: string;
     };
+export const diagnosticSignalSchema = z
+  .object({
+    event: z.enum([
+      'renderer.heartbeat',
+      'renderer.answer.received',
+      'renderer.error',
+      'capture.ready',
+      'capture.ended',
+      'capture.error',
+      'capture.pausing',
+      'capture.context',
+    ]),
+    id: z.string().max(100).optional(),
+    value: z.string().max(120).optional(),
+  })
+  .strict();
+export type DiagnosticSignal = z.infer<typeof diagnosticSignalSchema>;
 export interface DesktopAPI {
   readonly isDesktop: boolean;
+  diagnostic?(signal: DiagnosticSignal): void;
+  exportDiagnostics?(): Promise<boolean>;
   getSettings(): Promise<{ settings: Settings; hasKey: boolean }>;
   saveSettings(settings: Settings): Promise<void>;
   setKey(key: string): Promise<void>;

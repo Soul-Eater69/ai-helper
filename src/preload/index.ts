@@ -2,6 +2,8 @@ import { contextBridge, ipcRenderer } from 'electron';
 import type { DesktopAPI, AppEvent } from '../shared/contracts';
 const api: DesktopAPI = {
   isDesktop: true,
+  diagnostic: (signal) => ipcRenderer.send('diagnostics:signal', signal),
+  exportDiagnostics: () => ipcRenderer.invoke('diagnostics:export'),
   getSettings: () => ipcRenderer.invoke('settings:get'),
   saveSettings: (settings) => ipcRenderer.invoke('settings:save', settings),
   setKey: (key) => ipcRenderer.invoke('key:set', key),

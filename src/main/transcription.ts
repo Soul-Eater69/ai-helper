@@ -39,7 +39,26 @@ export class TranscriptionService {
   };
   private retryTimer?: ReturnType<typeof setTimeout>;
   private pendingReject?: (error: Error) => void;
-  constructor(private emit: (event: AppEvent) => void) {}
+  private sentChunks = 0;
+  private droppedChunks = 0;
+  constructor(
+    private emit: (event: AppEvent) => void,
+    private trace: (event: string, details: unknown) => void = () => {},
+  ) {}
+  diagnostics() {
+    const stats = {
+      ready: this.ready,
+      running: this.running,
+      bufferedBytes: this.socket?.bufferedAmount ?? 0,
+      pendingTranscripts: this.pendingItems.size,
+      draining: !!this.draining,
+      sentChunks: this.sentChunks,
+      droppedChunks: this.droppedChunks,
+    };
+    this.sentChunks = 0;
+    this.droppedChunks = 0;
+    return stats;
+  }
   async start(key: string, model: string): Promise<void> {
     this.stop(false);
     this.running = true;
@@ -108,7 +127,10 @@ export class TranscriptionService {
     if (notify) this.emit({ type: 'audio.status', status: 'stopped' });
   }
   append(data: ArrayBuffer): void {
-    if (!this.running || !this.ready || this.socket?.readyState !== WebSocket.OPEN) return;
+    if (!this.running || !this.ready || this.socket?.readyState !== WebSocket.OPEN) {
+      this.droppedChunks++;
+      return;
+    }
     if (this.socket.bufferedAmount > 256000) {
       this.emit({
         type: 'audio.status',
@@ -119,6 +141,7 @@ export class TranscriptionService {
       this.stop();
       return;
     }
+    this.sentChunks++;
     this.socket.send(
       JSON.stringify({
         type: 'input_audio_buffer.append',
@@ -188,6 +211,18 @@ export class TranscriptionService {
           event = JSON.parse(raw.toString());
         } catch {
           return;
+        }
+        if (
+          typeof event.type === 'string' &&
+          [
+            'input_audio_buffer.speech_stopped',
+            'input_audio_buffer.committed',
+            'input_audio_buffer.cleared',
+          ].includes(event.type)
+        ) {
+          this.trace(event.type, {
+            id: typeof event.item_id === 'string' ? event.item_id.slice(0, 100) : undefined,
+          });
         }
         if (event.type === 'session.updated') {
           acknowledged = true;

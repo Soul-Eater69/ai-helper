@@ -37,6 +37,7 @@ export class AudioCapture {
         track.addEventListener(
           'ended',
           () => {
+            this.api.diagnostic?.({ event: 'capture.ended' });
             void this.stop();
             this.ended();
           },
@@ -67,8 +68,15 @@ export class AudioCapture {
       mute.gain.value = 0;
       this.context.createMediaStreamSource(new MediaStream(stream.getAudioTracks())).connect(node);
       node.connect(mute).connect(this.context.destination);
+      this.context.onstatechange = () =>
+        this.api.diagnostic?.({ event: 'capture.context', value: this.context?.state });
       await this.context.resume();
+      this.api.diagnostic?.({ event: 'capture.ready', value: this.context.state });
     } catch (error) {
+      this.api.diagnostic?.({
+        event: 'capture.error',
+        value: error instanceof Error ? error.name : 'unknown',
+      });
       if (generation === this.generation) await this.stop();
       throw error;
     }
@@ -85,6 +93,7 @@ export class AudioCapture {
     this.level(0);
   }
   async pause(): Promise<void> {
+    this.api.diagnostic?.({ event: 'capture.pausing' });
     const generation = this.generation;
     if (this.context?.state === 'running') await this.context.suspend();
     if (generation !== this.generation) return;

@@ -25,6 +25,8 @@ import AnswerPanel from './components/AnswerPanel';
 import SettingsDialog from './components/SettingsDialog';
 export default function App() {
   const work = useSession();
+  const [exporting, setExporting] = useState(false);
+  const [diagnosticStatus, setDiagnosticStatus] = useState('');
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [source, setSource] = useState<'system' | 'microphone'>('system');
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -121,6 +123,34 @@ export default function App() {
           </details>
         )}
         <div className="sidebar-bottom">
+          {desktopAPI.exportDiagnostics && (
+            <>
+              <button
+                className="sidebar-action"
+                disabled={exporting}
+                title="Includes questions, responses and timing. Excludes raw audio and screenshots."
+                onClick={async () => {
+                  setExporting(true);
+                  setDiagnosticStatus('');
+                  try {
+                    const saved = await desktopAPI.exportDiagnostics!();
+                    setDiagnosticStatus(saved ? 'Diagnostics exported.' : 'Export cancelled.');
+                  } catch {
+                    setDiagnosticStatus(
+                      'Could not export diagnostics. Check disk space and try again.',
+                    );
+                  } finally {
+                    setExporting(false);
+                  }
+                }}
+              >
+                {exporting ? 'Exporting…' : 'Export diagnostics'}
+              </button>
+              <small>Logs include conversation text.</small>
+              <p role="status">{diagnosticStatus}</p>
+            </>
+          )}
+
           <button
             className="sidebar-action"
             aria-expanded={historyOpen}

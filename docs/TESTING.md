@@ -51,3 +51,33 @@ Run this in a **new session**, then repeat with older helper-style answers in hi
 - Paste PNG/JPEG/WebP images and verify previews, remove actions, and image-only submission. Unsupported or oversized files must show an error.
 - Send a real problem image with an image-capable API model. Verify exact constraints, examples and signature; ask a follow-up and check that image context is retained. Saved/reopened sessions retain text, not image bytes.
 - Confirm live audio still starts/stops independently while using the screenshot picker.
+
+## Diagnose slow or frozen sessions
+
+The desktop app records bounded diagnostic logs automatically. Reproduce the issue,
+then select **Export diagnostics** in the sidebar and attach the resulting `.jsonl`
+file. Include approximately when the freeze happened and whether you paused or
+resumed listening. Export after restarting if the app became unresponsive.
+
+Logs contain conversation text (transcripts, questions, streamed answers), request
+IDs, model configuration, context sizes, routing decisions, IPC timing, audio chunk
+counts, transcription connection/buffer state and app/renderer heartbeats. They do
+not intentionally collect raw audio, screenshots, profile text, the code workspace,
+or credentials. Known API credentials are redacted. Review conversation content
+before sharing; this export is not an anonymized file.
+
+On Windows, recovery files are normally under `%APPDATA%/ai-helper/diagnostics`
+(the actual folder is Electron's userData directory). `current.jsonl` and
+`previous.jsonl` retain up to roughly 16 MiB total; oldest records rotate out.
+Writes are buffered for one second. A hard crash can lose the final buffered
+second, and a saturated queue records a dropped-event count. Disk-write failures
+make export report failure rather than claiming a complete log.
+
+Compare `input_audio_buffer.speech_stopped`, `transcript.final`, `router.start`,
+`router.done`, `answer.request`, the first `answer.delta`,
+`renderer.answer.received`, and `answer.done`. Run IDs separate app launches;
+answer IDs join requests and response events, and route IDs join routing calls.
+Renderer receipt means the event reached the handler, not that text painted on
+screen. Heartbeats help distinguish a renderer stall from missing audio chunks
+or a provider delay. This instrumentation does not itself fix latency or prove
+real-microphone/provider compatibility.
