@@ -174,5 +174,28 @@
         "review": "Generalize beyond prompt examples: a useful missing rule might be per-member borrowing limits or loan due dates. Do not ask already settled title/copy relationship or reopen exclusions. Question must have a concrete design consequence."
       }
     ]
+  },
+  {
+    "name": "casual-clarification-transfer",
+    "history": [
+      {
+        "role": "user",
+        "content": "Design a dog park with multiple entry and exit gates. Customers reserve shared capacity for one or more dogs. Each dog counts toward capacity."
+      },
+      {
+        "role": "assistant",
+        "content": "Can people choose any start and end time, or do they pick from set slots?"
+      }
+    ],
+    "turns": [
+      {
+        "question": "They can choose any start and end time.",
+        "review": "Use simple read-aloud speech, not arbitrary intervals, capacity units or a formal constraint sentence. Do not re-ask whether each dog counts or whether agreed capacity must be respected. If asking about capacity, ask the missing limit. Never sum all pairwise-overlapping bookings as though they are simultaneous."
+      },
+      {
+        "question": "At most 20 dogs at any time. A booking can start just when another ends. Explain how you would check that a booking fits.",
+        "review": "Explain time changes in plain language without losing correctness. Track dogs present at each moment; do not sum bookings that overlap the new booking at different times. Ending bookings release capacity before starts at the same timestamp. Explain any term like sweep line alongside everyday meaning. Do not repeat known rules as clarification questions."
+      }
+    ]
   }
 ]
