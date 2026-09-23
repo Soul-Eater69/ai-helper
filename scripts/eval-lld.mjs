@@ -40,8 +40,8 @@ const report = {
   rubric: [
     'Listening: carries all supplied facts forward and does not repeat settled questions.',
     'Progression: asks a meaningful missing question or moves into concrete design.',
-    'Natural speech: easy to say aloud, short connected paragraphs, no forced fillers.',
-    'Reasoning: explains why state/objects are needed, not just their names.',
+    'Natural speech: read the spoken reply word for word as the candidate; ordinary language, connected sentences, no editing, coaching or forced fillers needed.',
+    'Reasoning: connects an action to why it is needed and its result; explains enough to follow, with a concrete example when abstract. Short labels and class lists alone fail.',
     'Grounding: no invented requirements, exclusions, personal experience or results.',
   ],
   results: [],

@@ -194,7 +194,7 @@
       },
       {
         "question": "At most 20 dogs at any time. A booking can start just when another ends. Explain how you would check that a booking fits.",
-        "review": "Explain time changes in plain language without losing correctness. Track dogs present at each moment; do not sum bookings that overlap the new booking at different times. Ending bookings release capacity before starts at the same timestamp. Explain any term like sweep line alongside everyday meaning. Do not repeat known rules as clarification questions."
+        "review": "Explain time changes in plain language without losing correctness. Track dogs present at each moment; do not sum bookings that overlap the new booking at different times. Ending bookings release capacity before starts at the same timestamp. Explain any term like sweep line alongside everyday meaning. Do not repeat known rules as clarification questions. Read verbatim: must connect the proposed check, changing dog counts, and the rejection reason in ordinary speech. Include a small concrete booking that fits initially but exceeds the limit later. No one-line availability slogan or unexplained terminology."
       }
     ]
   },
@@ -211,8 +211,12 @@
       },
       {
         "question": "Implement that in Python and explain how it works.",
-        "review": "Complete python source fence with meaningful comments, approach before code, and spoken method walkthrough after it. Explain normal entry/exit and an invalid/reused ticket without just listing entities. No pseudocode-only implementation.",
+        "review": "Complete python source fence with meaningful comments, approach before code, and spoken method walkthrough after it. Explain normal entry/exit and an invalid/reused ticket without just listing entities. No pseudocode-only implementation. Spoken answer must be usable word for word: connected method reasoning, not a bullet list of class names or instructions telling the candidate what to say. Explain why a reused ticket must be rejected before freeing a spot that may now belong to another car.",
         "implementation": true
+      },
+      {
+        "question": "Why check whether the ticket is closed before freeing the spot?",
+        "review": "Answer this specific why question using the agreed ticket flow. Explain that another car may now occupy the spot, so reusing an old ticket must not free it. No new code, replayed design, requirement questions, or coaching. Read aloud as written; evaluate connected reasoning, not filler frequency."
       }
     ]
   }

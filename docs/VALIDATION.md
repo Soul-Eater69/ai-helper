@@ -102,3 +102,23 @@ clarifications and requires spoken explanation around planning and implementatio
 Prompt changes require live-model evaluation; unit tests alone do not establish
 naturalness or explanation quality. A new evaluation covers planning followed by
 explicit implementation, with different workspace-proposal expectations.
+
+## 2026-09-23 read-aloud response style
+
+Prompt 2.17.0 consolidates the duplicated speech rules into one read-aloud
+contract. Spoken replies must be usable word for word: connect an action to its
+reason and result, explain real state changes, and keep code and whiteboard notes
+separate. Replaced mostly sentence-level rewrites with connected examples covering
+booking validation, ticket reuse, queue progression and narrow concept questions.
+The common implementation rule now asks for sufficient reasoning instead of an
+unqualified brief explanation. No extra model call was introduced.
+
+Re-read the supplied diagnostic questions and completed answers. They show repeated
+scope summaries and a compact design paragraph; this motivated the wording changes.
+The evaluator now explicitly scores verbatim spoken delivery and connected reasoning,
+including a booking that fits initially but exceeds capacity later and a reused-ticket
+follow-up. It plans 11 scenarios and 26 requests. The supplied log predates these
+changes and cannot validate the new prompt. Live evaluation credentials are absent;
+no provider evaluation was run. The practice browser flow is blocked by missing
+Playwright Chromium. Unit checks, typechecking and build are integration checks,
+not evidence that generated replies consistently sound natural.
