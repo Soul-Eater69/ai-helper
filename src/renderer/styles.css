@@ -2098,3 +2098,16 @@ svg {
     overflow-y: auto;
   }
 }
+
+.planning-code {
+  margin: 0;
+  padding: 24px;
+  height: 100%;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font:
+    14px/1.7 'Cascadia Code',
+    Consolas,
+    monospace;
+}

@@ -1,3 +1,4 @@
+import { fastSpeechDecision } from '../shared/speech-fast-path';
 import OpenAI from 'openai';
 import {
   speechDecisionSchema,
@@ -85,6 +86,8 @@ export class SpeechService {
   }
   async route(request: SpeechRequest, settings: Settings, key: string): Promise<SpeechDecision> {
     this.cancel();
+    const immediate = fastSpeechDecision(request);
+    if (immediate) return immediate;
     const controller = new AbortController();
     this.active = controller;
     try {

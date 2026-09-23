@@ -12,7 +12,7 @@ Optional `AI_HELPER_EVAL_REASONING` accepts `auto`, `none`, or `medium`; use the
 
 This is a paid provider evaluation, not a microphone/UI test. Output is saved incrementally in ignored `.eval-results/*.json`, including the prompt version, chosen model, questions, raw answers, automated checks, review criteria and answer-provider timing. First delta is not necessarily the first visible spoken word. Transcription and routing latency are not measured. Token usage/cost is not collected by the existing provider adapter; inspect provider usage separately.
 
-Automated checks detect missing notes, unexpected code proposals, multiple questions and some lost requirements. They are heuristics: a pass does not establish good reasoning or naturalness, and a valid paraphrase can trigger a failure. Review each raw answer against its turn-specific instructions.
+Automated checks detect missing notes, unexpected code proposals, more than two questions and some lost requirements. They are heuristics: a pass does not establish good reasoning or naturalness, and a valid paraphrase can trigger a failure. Review each raw answer against its turn-specific instructions.
 
 For each rubric dimension, score 0 (missed), 1 (partly), or 2 (met):
 
@@ -23,3 +23,5 @@ For each rubric dimension, score 0 (missed), 1 (partly), or 2 (met):
 - Grounding: does not invent requirements or treat examples as agreement.
 
 A critical failure is an invented confirmed requirement, an unsolicited workspace proposal, or repeatedly asking a settled question. Do not average away these failures. Require human review for every turn. Repeat live runs to check variability; record results for each model/settings combination separately. No real résumé or personal story is included in these fixtures.
+
+Related questions must address one coherent decision; the numeric check cannot judge this. Review it manually. Implementation turns explicitly require a workspace proposal; planning turns forbid one.

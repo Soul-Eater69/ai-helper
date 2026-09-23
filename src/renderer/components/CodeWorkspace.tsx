@@ -16,20 +16,35 @@ import { languages } from '../../shared/contracts';
 import { extractProposal } from '../../shared/revision';
 export default function CodeWorkspace({
   work,
+  planning = '',
   close,
   expanded,
   toggleExpanded,
 }: {
   work: Workspace;
+  planning?: string;
   close: () => void;
   expanded: boolean;
   toggleExpanded: () => void;
 }) {
-  const [view, setView] = useState<'editor' | 'diff' | 'history'>('editor');
+  const [view, setView] = useState<'editor' | 'diff' | 'history' | 'planning'>(
+    planning ? 'planning' : 'editor',
+  );
   const [compareWorking, setCompareWorking] = useState(false);
   useEffect(() => {
     setView((current) => (current === 'history' ? current : work.proposal ? 'diff' : 'editor'));
   }, [work.proposal]);
+  useEffect(() => {
+    setView((current) =>
+      planning
+        ? 'planning'
+        : current === 'planning'
+          ? work.proposal
+            ? 'diff'
+            : 'editor'
+          : current,
+    );
+  }, [planning]);
   useEffect(() => setCompareWorking(false), [work.proposal]);
   const stale = !!work.proposal && work.proposal.baseVersion !== work.doc.version;
   const baselineLabel =
@@ -83,6 +98,14 @@ export default function CodeWorkspace({
         </button>
       </div>
       <div className="code-tabs">
+        {planning && (
+          <button
+            className={view === 'planning' ? 'selected' : ''}
+            onClick={() => setView('planning')}
+          >
+            Design / pseudocode
+          </button>
+        )}
         <button className={view === 'editor' ? 'selected' : ''} onClick={() => setView('editor')}>
           <FileCode2 size={14} /> Editor
         </button>
@@ -99,11 +122,11 @@ export default function CodeWorkspace({
         </button>
         <div className="spacer" />
         <button
-          aria-label="Copy working code"
-          title="Copy working code"
+          aria-label={view === 'planning' ? 'Copy design pseudocode' : 'Copy working code'}
+          title={view === 'planning' ? 'Copy design pseudocode' : 'Copy working code'}
           onClick={() =>
             void navigator.clipboard
-              .writeText(work.doc.code)
+              .writeText(view === 'planning' ? planning : work.doc.code)
               .then(() => work.setNotice('Code copied'))
               .catch(() =>
                 work.setError('Clipboard access failed. Select and copy the code manually.'),
@@ -121,7 +144,7 @@ export default function CodeWorkspace({
           <Undo2 size={16} />
         </button>
       </div>
-      {work.proposal && view !== 'history' && (
+      {work.proposal && view !== 'history' && view !== 'planning' && (
         <div className="proposal-context">
           {request && (
             <details className="proposal-request">
@@ -154,7 +177,11 @@ export default function CodeWorkspace({
         </div>
       )}
       <div className="editor-wrap">
-        {view === 'history' ? (
+        {view === 'planning' ? (
+          <pre className="planning-code" aria-label="Design pseudocode">
+            {planning}
+          </pre>
+        ) : view === 'history' ? (
           <CodeHistory work={work} />
         ) : view === 'diff' && work.proposal ? (
           <CodeDiff
@@ -172,7 +199,10 @@ export default function CodeWorkspace({
           />
         )}
       </div>
-      {view !== 'history' && (
+      {view === 'planning' && (
+        <div className="code-footer">Planning only · working code is unchanged</div>
+      )}
+      {view !== 'history' && view !== 'planning' && (
         <div className="code-footer">
           {work.proposal ? (
             <>

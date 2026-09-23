@@ -197,5 +197,23 @@
         "review": "Explain time changes in plain language without losing correctness. Track dogs present at each moment; do not sum bookings that overlap the new booking at different times. Ending bookings release capacity before starts at the same timestamp. Explain any term like sweep line alongside everyday meaning. Do not repeat known rules as clarification questions."
       }
     ]
+  },
+  {
+    "name": "core-flow-and-explanation",
+    "turns": [
+      {
+        "question": "Design a multi-level parking lot in one building. Bikes, cars and trucks each have dedicated spaces. Customers give a registration number and vehicle type; we automatically assign a spot.",
+        "review": "Ask about a meaningful unsettled part of entry/exit, with up to two related parts in one turn if useful. Do not split identifiers and returned ticket into a long questionnaire or repeat known matching rules."
+      },
+      {
+        "question": "Issue a ticket at entry and use it at exit. Fees are another service. Take the first free matching spot, searching lower floors first. Reject when full. Single-threaded for now. Show pseudocode and explain it.",
+        "review": "Provide planning pseudocode plus spoken explanation before AND after it: connect method inputs, checks and state updates to the agreed flow. No runnable proposal and no new clarification quota."
+      },
+      {
+        "question": "Implement that in Python and explain how it works.",
+        "review": "Complete python source fence with meaningful comments, approach before code, and spoken method walkthrough after it. Explain normal entry/exit and an invalid/reused ticket without just listing entities. No pseudocode-only implementation.",
+        "implementation": true
+      }
+    ]
   }
 ]

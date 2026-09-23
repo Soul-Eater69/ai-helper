@@ -112,9 +112,11 @@ try {
       const spoken = output.replace(/```[\s\S]*?```/g, '');
       const checks = {
         completed: completed && !failed,
-        noWorkspaceProposal: !api.extractProposal(output, 0),
+        expectedWorkspaceProposal: turn.implementation
+          ? !!api.extractProposal(output, 0)
+          : !api.extractProposal(output, 0),
         validRequirements: !!notes,
-        atMostOneQuestion: (spoken.match(/\?/g) || []).length <= 1,
+        atMostTwoRelatedQuestions: (spoken.match(/\?/g) || []).length <= 2,
         expectedNotes: (turn.notes || []).every((pattern) =>
           new RegExp(pattern, 'i').test((notes?.requirements || []).join(' ')),
         ),

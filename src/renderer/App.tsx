@@ -1,3 +1,4 @@
+import { planningCode } from '../shared/planning';
 import { useEffect, useState } from 'react';
 import {
   Braces,
@@ -43,7 +44,13 @@ export default function App() {
     if (!latestTurnId) setCodeVisibility(null);
     else if (latestQuestion && startsNewProblem(latestQuestion)) setCodeVisibility(false);
   }, [latestTurnId, latestQuestion]);
-  const showCode = codeVisibility ?? (!!work.proposal || work.doc.code !== INITIAL_CODE);
+  const selectedTurn = work.turns.find((turn) => turn.id === work.selected);
+  const planning = selectedTurn?.status === 'done' ? planningCode(selectedTurn.answer) : '';
+  useEffect(() => {
+    if (planning) setCodeVisibility(null);
+  }, [planning]);
+  const showCode =
+    codeVisibility ?? (!!planning || !!work.proposal || work.doc.code !== INITIAL_CODE);
   const listening = ['ready', 'connecting', 'reconnecting'].includes(work.audioStatus);
   return (
     <div
@@ -292,6 +299,7 @@ export default function App() {
           <AnswerPanel work={work} openSettings={() => setSettingsOpen(true)} />
           {showCode && (
             <CodeWorkspace
+              planning={planning}
               work={work}
               close={() => setCodeVisibility(false)}
               expanded={codeExpanded}

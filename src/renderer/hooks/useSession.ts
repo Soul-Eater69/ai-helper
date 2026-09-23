@@ -48,6 +48,7 @@ export function useSession() {
   const [transcript, setTranscript] = useState<{ id: string; text: string }[]>([]);
   const [partial, setPartial] = useState('');
   const [speechStatus, setSpeechStatus] = useState('');
+  const captureStarting = useRef(false);
   const [audioStatus, setAudioStatus] = useState('stopped');
   const [level, setLevel] = useState(0);
   const [sessions, setSessions] = useState<SavedSession[]>([]);
@@ -266,7 +267,7 @@ export function useSession() {
         if (current.current.settings.autoAnswer) speechQueue.current?.final(event.text, event.id);
         else setQuestion((previous) => `${previous} ${event.text}`.trim().slice(-20000));
       } else if (event.type === 'audio.status') {
-        setAudioStatus(event.status);
+        if (event.status !== 'ready' || !captureStarting.current) setAudioStatus(event.status);
         if (event.message)
           event.status === 'error' ? setError(event.message) : setNotice(event.message);
         if (event.status === 'stopped' && pausedAudio.current) {
@@ -452,11 +453,14 @@ export function useSession() {
       setError('');
       setNotice('');
       setAudioStatus('connecting');
+      captureStarting.current = true;
       try {
-        await audio.current?.start(source);
+        if (await audio.current?.start(source)) setAudioStatus('ready');
       } catch (e) {
         setError(message(e));
         setAudioStatus('stopped');
+      } finally {
+        captureStarting.current = false;
       }
     },
     stopAudio: () => {

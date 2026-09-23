@@ -450,3 +450,24 @@ test('diagnostics export is discoverable and reports success', async ({ page }) 
   await page.getByRole('button', { name: 'Export diagnostics', exact: true }).click();
   await expect(page.getByText('Diagnostics exported.')).toBeVisible();
 });
+
+test('planning pseudocode opens a read-only side tab without a source proposal', async ({
+  page,
+}) => {
+  await supplyAnswers(page, [
+    '> I find a matching space first.\n\n```pseudocode\npark(vehicle):\n  find a free matching spot\n```\n\n> Then I save the ticket so exit can find that spot.',
+  ]);
+  await ask(page, 'Show the parking design and explain it');
+  await expect(
+    page.getByRole('button', { name: 'Design / pseudocode', exact: true }),
+  ).toBeVisible();
+  await expect(page.getByLabel('Design pseudocode', { exact: true })).toContainText(
+    'find a free matching spot',
+  );
+  await expect(page.getByRole('button', { name: 'Accept changes', exact: true })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Close code workspace', exact: true }).click();
+  await page.getByRole('button', { name: 'Show code', exact: true }).click();
+  await expect(page.getByLabel('Design pseudocode', { exact: true })).toContainText(
+    'park(vehicle)',
+  );
+});

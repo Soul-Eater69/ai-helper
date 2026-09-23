@@ -10,12 +10,13 @@ export class AudioCapture {
     private level: (value: number) => void,
     private ended: () => void,
   ) {}
-  async start(source: 'system' | 'microphone'): Promise<void> {
-    await this.stop();
+  async start(source: 'system' | 'microphone'): Promise<boolean> {
+    // Main start resets the old socket silently. Emitting stopped here races new capture.
+    await this.release();
     const generation = ++this.generation;
     try {
       await this.api.startAudio(source);
-      if (generation !== this.generation) return;
+      if (generation !== this.generation) return false;
       const stream =
         source === 'system'
           ? await navigator.mediaDevices.getDisplayMedia({
@@ -28,7 +29,7 @@ export class AudioCapture {
             });
       if (generation !== this.generation) {
         stream.getTracks().forEach((track) => track.stop());
-        return;
+        return false;
       }
       this.stream = stream;
       if (!stream.getAudioTracks().length)
@@ -52,7 +53,7 @@ export class AudioCapture {
       await this.context.audioWorklet.addModule(
         new URL('pcm-worklet.js', window.location.href).href,
       );
-      if (generation !== this.generation) return;
+      if (generation !== this.generation) return false;
       const node = new AudioWorkletNode(this.context, 'pcm-capture');
       this.node = node;
       node.port.onmessage = (event) => {
@@ -71,7 +72,9 @@ export class AudioCapture {
       this.context.onstatechange = () =>
         this.api.diagnostic?.({ event: 'capture.context', value: this.context?.state });
       await this.context.resume();
+      if (generation !== this.generation) return false;
       this.api.diagnostic?.({ event: 'capture.ready', value: this.context.state });
+      return true;
     } catch (error) {
       this.api.diagnostic?.({
         event: 'capture.error',

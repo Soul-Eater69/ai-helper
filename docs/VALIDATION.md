@@ -74,3 +74,31 @@ Validation uses existing unit tests, type checking/build and the practice browse
 ## Statement-first interview behavior
 
 Prompt 2.6.0 replaces familiarity claims and title-based assumptions with a request for the actual statement. Partial statements receive a targeted question; complete statements and pinned context are reused without repetition. Examples cover changed variants, an interviewer still explaining, and explicit requests for a standard implementation. The normal flow remains adaptive rather than a fixed questionnaire. Existing integration checks verify compatibility; the updated live acceptance sequence in TESTING.md is needed to evaluate actual model behavior. No live provider evaluation was performed here.
+
+## 2026-09-23 diagnostic session follow-up
+
+Reviewed a supplied Windows diagnostic export (conversation text is not committed).
+Seven answer requests completed. Request-to-first-delta ranged from 859 to 5139 ms;
+router calls ranged from 365 ms (cancelled) to 3660 ms. Main heartbeat lag peaked at
+18 ms. This trace does not show a main-process freeze or answer-provider failure.
+The initial audio connection became ready but produced neither capture.ready nor
+any audio chunks. Later starts did both.
+
+Removed the capture startup's backend stop call: its stopped notification could
+reach the renderer after the new capture generation began and release that new
+capture. Main transcription.start already resets its previous socket silently.
+A regression test failed before this change and passed afterward. Explicit
+stop/release still cancels delayed media acquisition. UI readiness now waits for
+local capture, not just the remote transcription connection.
+
+Added a narrowly matched social-greeting router fast path. Technical, mixed and
+ambiguous utterances still use the model router. This reduces one measured source
+of overhead for greetings; it does not eliminate variable answer-provider latency.
+
+The supplied design output contains pseudocode, not a runnable implementation.
+Completed pseudocode now has a read-only Design / pseudocode tab alongside source
+code, with no accept/apply path. Updated LLD guidance permits two closely related
+clarifications and requires spoken explanation around planning and implementation.
+Prompt changes require live-model evaluation; unit tests alone do not establish
+naturalness or explanation quality. A new evaluation covers planning followed by
+explicit implementation, with different workspace-proposal expectations.
