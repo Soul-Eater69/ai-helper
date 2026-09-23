@@ -13,12 +13,14 @@ import {
   type AppEvent,
   type Settings,
   type SavedSession,
+  type AnswerRequest,
 } from '../../shared/contracts';
 import { SpeechQueue } from '../speech-queue';
 import { buildHistory, compactSpeechRequest } from '../../shared/history';
 import type { ImageAttachment } from '../../shared/images';
 import { SessionSaver } from '../session-saver';
 import { AudioCapture } from '../audio/capture';
+import { DeltaBuffer } from '../delta-buffer';
 export interface Turn {
   images?: ImageAttachment[];
   id: string;
@@ -72,9 +74,39 @@ export function useSession() {
   const pausedAudio = useRef(false);
   const pausing = useRef<Promise<void> | null>(null);
   const speechQueue = useRef<SpeechQueue | null>(null);
+  const prepared = useRef<AnswerRequest | null>(null);
+  const deltas = useRef(
+    new DeltaBuffer((id, text) => {
+      if (active.current?.id !== id) return;
+      setTurns((items) =>
+        items.map((turn) => (turn.id === id ? { ...turn, answer: turn.answer + text } : turn)),
+      );
+    }),
+  );
   const current = useRef({ settings, context, doc, turns, demo, proposal, images });
   current.current = { settings, context, doc, turns, demo, proposal, images };
   const api = () => (current.current.demo ? demoAPI : desktopAPI);
+  const makeRequest = (
+    id: string,
+    text: string,
+    recentSpeech?: string[],
+    attached: ImageAttachment[] = [],
+  ): AnswerRequest => {
+    const state = current.current;
+    const useProposal = !!state.proposal && state.proposal.baseVersion === state.doc.version;
+    return {
+      id,
+      question: text,
+      images: attached,
+      context: state.context,
+      speechContext: recentSpeech,
+      code: useProposal ? state.proposal!.code : state.doc.code,
+      codeSource: useProposal ? 'proposal' : 'working',
+      codeVersion: state.doc.version,
+      language: state.settings.language,
+      history: buildHistory(state.turns),
+    };
+  };
   const refreshSettings = useCallback(async () => {
     try {
       const result = await desktopAPI.getSettings();
@@ -89,6 +121,7 @@ export function useSession() {
     void refreshSettings();
   }, [refreshSettings]);
   const stopAnswer = useCallback(async () => {
+    deltas.current.flush();
     pausedAudio.current = false;
     speechQueue.current?.stop();
     void desktopAPI.cancelSpeech();
@@ -130,14 +163,16 @@ export function useSession() {
         setError('Open the Windows app for live answers, or try the sample session.');
         return;
       }
-      const id = crypto.randomUUID();
+      const id = overrides?.speech && prepared.current ? prepared.current.id : crypto.randomUUID();
+      deltas.current.flush();
+      prepared.current = null;
       if (active.current) {
         const old = active.current.id;
         setTurns((items) => items.map((t) => (t.id === old ? { ...t, status: 'cancelled' } : t)));
       }
-      const useProposal = !!state.proposal && state.proposal.baseVersion === state.doc.version;
-      const baseCode = useProposal ? state.proposal!.code : state.doc.code;
-      const source = useProposal ? ('proposal' as const) : ('working' as const);
+      const request = makeRequest(id, text, overrides?.recentSpeech, attached);
+      const baseCode = request.code;
+      const source = request.codeSource!;
       active.current = { id, version: state.doc.version, code: baseCode, source };
       setBusy(true);
       setError('');
@@ -147,20 +182,8 @@ export function useSession() {
         ...(items.length >= 30 ? [items[0], ...items.slice(-28)] : items),
         { id, question: text.trim(), images: attached, answer: '', status: 'streaming' as const },
       ]);
-      const history = buildHistory(state.turns);
       try {
-        await (useDemo ? demoAPI : desktopAPI).answer({
-          id,
-          question: text,
-          images: attached,
-          context: state.context,
-          speechContext: overrides?.recentSpeech,
-          code: baseCode,
-          codeSource: source,
-          codeVersion: state.doc.version,
-          language: state.settings.language,
-          history,
-        });
+        await (useDemo ? demoAPI : desktopAPI).answer(request);
         return true;
       } catch (e) {
         if (active.current?.id === id) {
@@ -185,6 +208,7 @@ export function useSession() {
             text,
             recentSpeech,
             finalize,
+            answerId: prepared.current?.id,
             context: state.context,
             history: buildHistory(state.turns),
             currentResponse: state.turns.at(-1)?.answer.slice(-6000) ?? '',
@@ -197,6 +221,25 @@ export function useSession() {
       },
       setSpeechStatus,
       (error) => setError(message(error)),
+      {
+        settleMs: 0, // Provider-final text is already endpointed; do not stack another silence timer.
+        prepare: (text, recent) => {
+          if (current.current.demo || !desktopAPI.isDesktop) return;
+          const request = makeRequest(crypto.randomUUID(), text, recent);
+          prepared.current = request;
+          if (!current.current.settings.earlyPreparation) return;
+          void desktopAPI.prepareAnswer(request).catch(() => {
+            // Preparation is optional; routing still commits a normal request on failure.
+            if (prepared.current?.id === request.id) prepared.current = null;
+          });
+        },
+        cancel: () => {
+          const draft = prepared.current;
+          prepared.current = null;
+          if (draft) void desktopAPI.discardAnswer(draft.id).catch(() => {});
+          void desktopAPI.cancelSpeech().catch(() => {});
+        },
+      },
     );
     const received = new Set<string>();
     const heartbeat = setInterval(
@@ -219,11 +262,9 @@ export function useSession() {
       }
       if (event.type.startsWith('answer.')) {
         if (!('id' in event) || event.id !== active.current?.id) return;
-        if (event.type === 'answer.delta')
-          setTurns((items) =>
-            items.map((t) => (t.id === event.id ? { ...t, answer: t.answer + event.text } : t)),
-          );
+        if (event.type === 'answer.delta') deltas.current.push(event.id, event.text);
         if (event.type === 'answer.done') {
+          deltas.current.clear();
           const captured = active.current!;
           setTurns((items) =>
             items.map((t) =>
@@ -241,6 +282,7 @@ export function useSession() {
           setSpeechStatus('');
         }
         if (event.type === 'answer.error' || event.type === 'answer.cancelled') {
+          deltas.current.flush();
           if (event.type === 'answer.error') setError(event.message);
           setTurns((items) =>
             items.map((t) =>
@@ -286,6 +328,7 @@ export function useSession() {
       setNotice('Audio sharing ended.');
     });
     return () => {
+      deltas.current.clear();
       clearInterval(heartbeat);
       window.removeEventListener('error', reportError);
       window.removeEventListener('unhandledrejection', reportError);

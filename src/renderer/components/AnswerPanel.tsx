@@ -8,6 +8,7 @@ import PracticeTools from './PracticeTools';
 import QuestionImages from './QuestionImages';
 import { readQuestionImage } from '../images';
 import { MAX_IMAGES } from '../../shared/images';
+import { desktopAPI } from '../bridge';
 export default function AnswerPanel({
   work,
   openSettings,
@@ -66,6 +67,27 @@ export default function AnswerPanel({
   const items = useRef(new Map<string, HTMLElement>());
   const latest = work.turns.at(-1);
   const activeTurn = work.turns.find((turn) => turn.id === work.selected) ?? latest;
+  const painted = useRef(new Set<string>());
+  const hasAnswer = !!activeTurn?.answer;
+  useEffect(() => {
+    const id = activeTurn?.id;
+    if (!id || !hasAnswer || painted.current.has(id)) return;
+    let second = 0;
+    const first = requestAnimationFrame(() => {
+      second = requestAnimationFrame(() => {
+        if (document.visibilityState !== 'visible') return;
+        painted.current.add(id);
+        if (painted.current.size > 100)
+          painted.current.delete(painted.current.values().next().value!);
+        // A post-commit paint opportunity, not proof of pixels presented by the OS compositor.
+        desktopAPI.diagnostic?.({ event: 'renderer.answer.painted', id });
+      });
+    });
+    return () => {
+      cancelAnimationFrame(first);
+      cancelAnimationFrame(second);
+    };
+  }, [activeTurn?.id, hasAnswer]);
   useEffect(() => {
     if (focused && scroll.current) {
       scroll.current.scrollTop = readingPositions.current.get(activeTurn?.id ?? '') ?? 0;

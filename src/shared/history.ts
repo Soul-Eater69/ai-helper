@@ -1,6 +1,37 @@
 import type { ImageAttachment } from './images';
 import type { SpeechRequest } from './contracts';
 import { answerAsNotes } from './visual-trace';
+import type { AnswerRequest } from './contracts';
+
+/** Only exact artifact duplicates are replaced; user facts and prose remain verbatim. */
+export function deduplicateCodeHistory(
+  history: AnswerRequest['history'],
+  currentCode: string,
+): AnswerRequest['history'] {
+  const normalize = (text: string) => text.replace(/\r\n/g, '\n').replace(/^\n+|\n+$/g, '');
+  const seen = new Map<string, string>();
+  if (currentCode) seen.set(normalize(currentCode), 'the currentCode field');
+  return history
+    .map((message) => ({ ...message }))
+    .reverse()
+    .map((message) => {
+      if (message.role !== 'assistant') return message;
+      return {
+        ...message,
+        content: message.content.replace(
+          /^```(?:python|py|java|javascript|js|typescript|ts|cpp|c\+\+)\s*\n([\s\S]*?)^```[ \t]*$/gm,
+          (block, body: string) => {
+            const code = normalize(body);
+            const reference = seen.get(code);
+            if (reference) return `[Identical implementation retained in ${reference}.]`;
+            seen.set(code, 'a later assistant message');
+            return block;
+          },
+        ),
+      };
+    })
+    .reverse();
+}
 /** Keep the opening question and newest complete turns inside a bounded provider payload. */
 export function buildHistory(
   turns: readonly {

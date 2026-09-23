@@ -104,6 +104,7 @@ export const settingsSchema = z
       })
       .default({ lld: '', dsa: '', behavioral: '' }),
     autoAnswer: z.boolean().default(true),
+    earlyPreparation: z.boolean().default(true),
     saveHistory: z.boolean().default(false),
   })
   .strict();
@@ -149,6 +150,7 @@ export const speechRequestSchema = answerRequestSchema
       .max(2),
     currentResponse: z.string().max(1200),
     finalize: z.boolean().optional(),
+    answerId: z.string().min(1).max(100).optional(),
   })
   .strict();
 export type SpeechRequest = z.infer<typeof speechRequestSchema>;
@@ -194,6 +196,7 @@ export const diagnosticSignalSchema = z
     event: z.enum([
       'renderer.heartbeat',
       'renderer.answer.received',
+      'renderer.answer.painted',
       'renderer.error',
       'capture.ready',
       'capture.ended',
@@ -215,6 +218,8 @@ export interface DesktopAPI {
   setKey(key: string): Promise<void>;
   deleteKey(): Promise<void>;
   answer(request: AnswerRequest): Promise<void>;
+  prepareAnswer(request: AnswerRequest): Promise<void>;
+  discardAnswer(id: string): Promise<void>;
   listCaptureSources(): Promise<CaptureSource[]>;
   captureImage(sourceId: string): Promise<ImageAttachment>;
   cancel(): Promise<void>;

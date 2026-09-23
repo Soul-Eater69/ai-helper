@@ -1,6 +1,7 @@
 import { isBehaviouralQuestion, selectStories, renderStory } from '../shared/story-bank';
 import OpenAI from 'openai';
 import { buildInstructions } from '../shared/prompts';
+import { deduplicateCodeHistory } from '../shared/history';
 import type { AppEvent, AnswerRequest, Settings } from '../shared/contracts';
 export type ProviderEvent = { type: 'delta'; text: string } | { type: 'complete' };
 export type StreamProvider = (
@@ -50,58 +51,113 @@ export function composeAnswerContext(request: AnswerRequest, settings: Settings)
     ),
   };
 }
-export const openAIProvider: StreamProvider = async function* (request, settings, key, signal) {
-  const client = new OpenAI({ apiKey: key, maxRetries: 1, timeout: 60000 });
-  const stream = await client.responses.create(
-    {
+export function createOpenAIProvider(
+  trace: (event: string, data: Record<string, unknown>) => void = () => {},
+): StreamProvider {
+  let connection: { key: string; client: OpenAI } | undefined;
+  return async function* (request, settings, key, signal) {
+    if (connection?.key !== key)
+      connection = { key, client: new OpenAI({ apiKey: key, maxRetries: 1, timeout: 60000 }) };
+    const client = connection.client;
+    const started = performance.now();
+    const instructions = buildInstructions(settings);
+    const history = deduplicateCodeHistory(request.history, request.code);
+    const explicitCache = settings.model === 'gpt-5.6-sol';
+    trace('provider.start', {
+      id: request.id,
       model: settings.model,
-      ...(settings.model === 'gpt-5.6-sol' && settings.answerReasoning !== 'auto'
-        ? { reasoning: { effort: settings.answerReasoning } }
-        : {}),
-      stream: true,
-      store: false,
-      instructions: buildInstructions(settings),
-      max_output_tokens: 6000,
-      input: [
-        ...request.history.map(({ role, content, images }) => ({
-          role,
-          content: images?.length
+      reasoning: settings.answerReasoning,
+      instructionChars: instructions.length,
+      historyChars: history.reduce((n, m) => n + m.content.length, 0),
+      cacheMode: explicitCache ? 'explicit' : 'default',
+    });
+    const stream = await client.responses.create(
+      {
+        model: settings.model,
+        ...(settings.model === 'gpt-5.6-sol' && settings.answerReasoning !== 'auto'
+          ? { reasoning: { effort: settings.answerReasoning } }
+          : {}),
+        stream: true,
+        store: false,
+        ...(explicitCache
+          ? { prompt_cache_options: { mode: 'explicit' as const } }
+          : { instructions }),
+        max_output_tokens: 6000,
+        input: [
+          ...(explicitCache
             ? [
-                { type: 'input_text' as const, text: content },
-                ...images.map((image) => ({
-                  type: 'input_image' as const,
-                  image_url: image.dataUrl,
-                  detail: 'high' as const,
-                })),
+                {
+                  role: 'developer' as const,
+                  content: [
+                    {
+                      type: 'input_text' as const,
+                      text: instructions,
+                      prompt_cache_breakpoint: { mode: 'explicit' as const },
+                    },
+                  ],
+                },
               ]
-            : content,
-        })),
-        {
-          role: 'user',
-          content: [
-            { type: 'input_text', text: JSON.stringify(composeAnswerContext(request, settings)) },
-            ...(request.images ?? []).map((image) => ({
-              type: 'input_image' as const,
-              image_url: image.dataUrl,
-              detail: 'high' as const,
-            })),
-          ],
-        },
-      ],
-    },
-    { signal },
-  );
-  for await (const event of stream) {
-    if (event.type === 'response.output_text.delta') yield { type: 'delta', text: event.delta };
-    else if (event.type === 'response.completed') yield { type: 'complete' };
-    else if (
-      event.type === 'response.failed' ||
-      event.type === 'response.incomplete' ||
-      event.type === 'error'
-    )
-      throw new Error('Provider did not complete the response');
-  }
-};
+            : []),
+          ...history.map(({ role, content, images }) => ({
+            role,
+            content: images?.length
+              ? [
+                  { type: 'input_text' as const, text: content },
+                  ...images.map((image) => ({
+                    type: 'input_image' as const,
+                    image_url: image.dataUrl,
+                    detail: 'high' as const,
+                  })),
+                ]
+              : content,
+          })),
+          {
+            role: 'user',
+            content: [
+              { type: 'input_text', text: JSON.stringify(composeAnswerContext(request, settings)) },
+              ...(request.images ?? []).map((image) => ({
+                type: 'input_image' as const,
+                image_url: image.dataUrl,
+                detail: 'high' as const,
+              })),
+            ],
+          },
+        ],
+      },
+      { signal },
+    );
+    trace('provider.connected', {
+      id: request.id,
+      durationMs: Math.round(performance.now() - started),
+    });
+    let first = true;
+    for await (const event of stream) {
+      if (event.type === 'response.output_text.delta') {
+        if (first) {
+          first = false;
+          trace('provider.first_delta', {
+            id: request.id,
+            durationMs: Math.round(performance.now() - started),
+          });
+        }
+        yield { type: 'delta', text: event.delta };
+      } else if (event.type === 'response.completed') {
+        trace('provider.completed', {
+          id: request.id,
+          durationMs: Math.round(performance.now() - started),
+          usage: event.response?.usage,
+        });
+        yield { type: 'complete' };
+      } else if (
+        event.type === 'response.failed' ||
+        event.type === 'response.incomplete' ||
+        event.type === 'error'
+      )
+        throw new Error('Provider did not complete the response');
+    }
+  };
+}
+export const openAIProvider = createOpenAIProvider();
 export class AssistantService {
   private active?: { id: string; abort: AbortController };
   constructor(

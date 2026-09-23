@@ -21,6 +21,8 @@ export const demoAPI: DesktopAPI = {
     throw new Error('Open the Windows desktop app to store an API key.');
   },
   deleteKey: async () => undefined,
+  prepareAnswer: async () => undefined,
+  discardAnswer: async () => undefined,
   answer: async (request) => {
     const current = ++generation;
     let answer = example;

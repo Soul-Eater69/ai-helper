@@ -7,13 +7,20 @@ export class SpeechQueue {
   private recent: string[] = [];
   private epoch = 0;
   private timer?: ReturnType<typeof setTimeout>;
+  private preparedEpoch = -1;
   constructor(
     private route: (text: string, recent: string[], finalize?: boolean) => Promise<SpeechDecision>,
     private answer: (text: string, recent: string[]) => void,
     private status: (text: string) => void,
     private error: (error: unknown) => void,
+    private preparation?: {
+      prepare: (text: string, recent: string[]) => void;
+      cancel: () => void;
+      settleMs?: number;
+    },
   ) {}
   partial(): void {
+    this.preparation?.cancel();
     this.epoch++;
     clearTimeout(this.timer);
     this.status('Listening');
@@ -28,7 +35,7 @@ export class SpeechQueue {
     if (text.trim()) this.pending = `${this.pending} ${text}`.trim().slice(-20000);
     if (!this.pending || this.speaking.size || this.held) return;
     const epoch = this.epoch;
-    this.timer = setTimeout(() => void this.decide(epoch), 350);
+    this.timer = setTimeout(() => void this.decide(epoch), this.preparation?.settleMs ?? 350);
   }
   hold(): void {
     this.partial();
@@ -53,6 +60,10 @@ export class SpeechQueue {
     const startedAt = Date.now();
     this.status('Understanding');
     try {
+      if (this.preparedEpoch !== epoch) {
+        this.preparedEpoch = epoch;
+        this.preparation?.prepare(text, [...this.recent]);
+      }
       const decision = finalize
         ? await this.route(text, [...this.recent], true)
         : await this.route(text, [...this.recent]);
@@ -70,9 +81,13 @@ export class SpeechQueue {
       if (decision.action === 'answer' || decision.action === 'wait') {
         this.status('Answering');
         this.answer(text, context);
-      } else this.status('Listening');
+      } else {
+        this.preparation?.cancel();
+        this.status('Listening');
+      }
     } catch (error) {
       if (epoch !== this.epoch) return;
+      this.preparation?.cancel();
       this.status('Repeat to retry');
       this.error(error);
     }

@@ -1,6 +1,59 @@
 import { afterEach, expect, it, vi } from 'vitest';
 import { SpeechQueue } from '../src/renderer/speech-queue';
 afterEach(() => vi.useRealTimers());
+it('prepares in parallel with the router, retains one draft across wait, and cancels on continued speech', async () => {
+  vi.useFakeTimers();
+  let resolve!: (decision: { action: 'wait' }) => void;
+  const prepare = vi.fn();
+  const cancel = vi.fn();
+  const queue = new SpeechQueue(
+    () =>
+      new Promise((r) => {
+        resolve = r;
+      }),
+    () => {},
+    () => {},
+    () => {},
+    { prepare, cancel },
+  );
+  queue.final('Consider this algorithm');
+  await vi.advanceTimersByTimeAsync(350);
+  expect(prepare).toHaveBeenCalledWith('Consider this algorithm', []);
+  resolve({ action: 'wait' });
+  await vi.advanceTimersByTimeAsync(1600);
+  expect(prepare).toHaveBeenCalledTimes(1);
+  cancel.mockClear();
+  queue.started('continuation');
+  expect(cancel).toHaveBeenCalledTimes(1);
+  resolve({ action: 'wait' });
+  queue.stop();
+});
+
+it('discards hidden preparation on ignored speech and routing failure', async () => {
+  vi.useFakeTimers();
+  const cancel = vi.fn();
+  const error = vi.fn();
+  const route = vi
+    .fn()
+    .mockResolvedValueOnce({ action: 'ignore' })
+    .mockRejectedValueOnce(new Error('offline'));
+  const queue = new SpeechQueue(
+    route,
+    () => {},
+    () => {},
+    error,
+    { prepare: () => {}, cancel },
+  );
+  queue.final('Some speech');
+  cancel.mockClear();
+  await vi.advanceTimersByTimeAsync(350);
+  expect(cancel).toHaveBeenCalledOnce();
+  queue.final('New speech');
+  cancel.mockClear();
+  await vi.advanceTimersByTimeAsync(350);
+  expect(cancel).toHaveBeenCalledOnce();
+  expect(error).toHaveBeenCalledOnce();
+});
 it('sends a semantic question automatically, including short clarification replies', async () => {
   vi.useFakeTimers();
   const answer = vi.fn();

@@ -9,7 +9,8 @@ import { imageAttachmentSchema } from '../shared/images';
 import { withoutCaptureOverlay } from './screenshot';
 import { RequestGate } from '../shared/request-gate';
 import { Vault } from './storage';
-import { AssistantService, openAIProvider } from './assistant';
+import { createOpenAIProvider } from './assistant';
+import { SessionController } from './session-controller';
 import { SpeechService } from './speech';
 import { TranscriptionService } from './transcription';
 import {
@@ -23,11 +24,10 @@ import {
 
 let diagnostics: Diagnostics | undefined;
 let window: BrowserWindow | undefined;
-let assistant: AssistantService;
+let assistant: SessionController;
 let transcription: TranscriptionService;
 let captureGrant: { source: 'system' | 'microphone'; expires: number } | undefined;
 let startEpoch = 0;
-const answerGate = new RequestGate();
 const speechGate = new RequestGate();
 const speech = new SpeechService();
 const cancelSpeech = () => {
@@ -84,7 +84,16 @@ async function boot(): Promise<void> {
     bytes = 0;
   }, 5000);
   heartbeat.unref();
-  assistant = new AssistantService(openAIProvider, emit);
+  assistant = new SessionController(
+    createOpenAIProvider((event, data) => diagnostics?.record(event, data)),
+    emit,
+    async () => {
+      const key = await vault.key();
+      if (!key) throw new Error('Add your OpenAI API key in Settings first.');
+      return { key, settings: await vault.settings() };
+    },
+    (event, data) => diagnostics?.record(event, data),
+  );
   transcription = new TranscriptionService(emit, (event, details) =>
     diagnostics?.record(event, details),
   );
@@ -147,7 +156,6 @@ async function boot(): Promise<void> {
   });
   handle('key:delete', async () => {
     cancelSpeech();
-    answerGate.cancel();
     assistant.cancel();
     transcription.stop();
     captureGrant = undefined;
@@ -165,21 +173,12 @@ async function boot(): Promise<void> {
       contextChars: request.context.length,
       imageCount: request.images?.length ?? 0,
     });
-    const ticket = answerGate.begin();
-    assistant.cancel();
-    const key = await vault.key();
-    if (!key) throw new Error('Add your OpenAI API key in Settings first.');
-    const settings = await vault.settings();
-    diagnostics?.record('answer.config', {
-      id: request.id,
-      model: settings.model,
-      reasoning: settings.answerReasoning,
-    });
-    if (answerGate.isCurrent(ticket)) void assistant.answer(request, settings, key);
+    await assistant.answer(request);
   });
+  handle('answer:prepare', (input) => assistant.prepare(answerRequestSchema.parse(input)));
+  handle('answer:discard', (input) => assistant.discard(z.string().min(1).max(100).parse(input)));
   handle('answer:cancel', () => {
     cancelSpeech();
-    answerGate.cancel();
     assistant.cancel();
   });
   // Capture is a user-selected still image, separate from the live audio grant.
@@ -233,6 +232,7 @@ async function boot(): Promise<void> {
     const routeId = crypto.randomUUID();
     diagnostics?.record('router.start', {
       routeId,
+      answerId: request.answerId,
       model: settings.routerModel || settings.model,
       text: request.text,
       finalize: request.finalize,
@@ -374,7 +374,6 @@ async function boot(): Promise<void> {
   window.webContents.on('render-process-gone', (_event, details) => {
     diagnostics?.record('renderer.gone', { reason: details.reason, exitCode: details.exitCode });
     cancelSpeech();
-    answerGate.cancel();
     startEpoch++;
     assistant.cancel();
     transcription.stop();
@@ -384,7 +383,6 @@ async function boot(): Promise<void> {
     diagnostics?.record('app.window.closed');
     void diagnostics?.close();
     cancelSpeech();
-    answerGate.cancel();
     startEpoch++;
     assistant.cancel();
     transcription.stop();

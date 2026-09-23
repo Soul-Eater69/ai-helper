@@ -5,6 +5,7 @@ import {
   type ReactNode,
   useContext,
   useMemo,
+  memo,
 } from 'react';
 import Markdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -71,13 +72,7 @@ function removeEmptyHeadings() {
   };
 }
 
-export default function AnswerContent({
-  text,
-  streaming = false,
-}: {
-  text: string;
-  streaming?: boolean;
-}) {
+function AnswerContent({ text, streaming = false }: { text: string; streaming?: boolean }) {
   const components = useMemo<Components>(
     () => ({
       a: ({ children }) => <span>{children}</span>,
@@ -167,3 +162,4 @@ export default function AnswerContent({
     </StreamingContext.Provider>
   );
 }
+export default memo(AnswerContent);

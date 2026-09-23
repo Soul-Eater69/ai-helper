@@ -181,3 +181,11 @@ interruption, resuming the same step and manual highlighting. Browser execution
 remains dependent on an available Playwright Chromium installation; prior install
 attempts in this environment returned invalid archives. No live Windows or model
 performance claim follows from these UI changes.
+
+# Streaming session architecture — September 2026
+
+- 146 unit tests across 26 files passed, including hidden publication, midstream commit, late-output suppression, cancellation during asynchronous setup, changed code/context/history/settings, expiration, failed-draft fallback, idempotent commit and preparation rate bounds.
+- Deterministic overlap test: 1000 ms routing plus 1200 ms generation produces first text at 1200 ms after scheduling. This is a scheduler test, not a live latency measurement.
+- TypeScript checking passed. Independent review reported no critical or important issues.
+- Browser tests attempted: `answer-display.spec.ts`, `code-review.spec.ts`, and new `streaming-session.spec.ts`. All were blocked before execution by the missing Playwright Chromium executable. No system Chromium alternative was present.
+- Live Windows capture, provider compatibility/cache hits, answer quality and p50/p95 latency remain unmeasured. See `STREAMING-LATENCY.md` for the comparison procedure and diagnostic events.

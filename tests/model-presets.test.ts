@@ -65,12 +65,42 @@ it('sends current and previous question images as vision inputs, not JSON text',
     /* consume */
   }
   const body = create.mock.lastCall?.[0] as { input: { content: unknown }[] };
-  expect(body.input[0].content).toEqual([
+  const messages = body.input.filter((m) => (m as { role?: string }).role !== 'developer');
+  expect(messages[0].content).toEqual([
     { type: 'input_text', text: 'Earlier image' },
     { type: 'input_image', image_url: image.dataUrl, detail: 'high' },
   ]);
-  expect(body.input[1].content).toEqual([
+  expect(messages[1].content).toEqual([
     expect.objectContaining({ type: 'input_text' }),
     { type: 'input_image', image_url: image.dataUrl, detail: 'high' },
   ]);
+});
+
+it('places a reusable explicit cache boundary after stable guidance for the supported model', async () => {
+  const request = answerRequestSchema.parse({
+    id: 'cache',
+    question: 'Explain this',
+    code: '',
+    codeVersion: 0,
+    language: 'python',
+    history: [],
+  });
+  for await (const _event of openAIProvider(
+    request,
+    settingsSchema.parse({ model: 'gpt-5.6-sol' }),
+    'test',
+    new AbortController().signal,
+  )) {
+    /* consume */
+  }
+  expect(create.mock.lastCall?.[0]).toMatchObject({
+    prompt_cache_options: { mode: 'explicit' },
+    input: [
+      expect.objectContaining({
+        role: 'developer',
+        content: [expect.objectContaining({ prompt_cache_breakpoint: { mode: 'explicit' } })],
+      }),
+      expect.anything(),
+    ],
+  });
 });

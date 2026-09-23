@@ -370,6 +370,21 @@ export default function SettingsDialog({ work, close }: { work: Workspace; close
           <label className="check-row">
             <input
               type="checkbox"
+              checked={draft.earlyPreparation}
+              onChange={(e) => setDraft({ ...draft, earlyPreparation: e.target.checked })}
+            />
+            <span>
+              <strong>Prepare replies early</strong>
+              <small>
+                Prepare a hidden answer while checking the spoken turn. Continued speech discards
+                it. This can reduce waiting but uses extra API tokens for discarded drafts. Turn off
+                to wait for the decision before generating.
+              </small>
+            </span>
+          </label>
+          <label className="check-row">
+            <input
+              type="checkbox"
               checked={draft.saveHistory}
               onChange={(e) => setDraft({ ...draft, saveHistory: e.target.checked })}
             />

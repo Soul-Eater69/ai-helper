@@ -1,5 +1,6 @@
 import { expect, it } from 'vitest';
-import { fastSpeechDecision } from '../src/shared/speech-fast-path';
+import { SpeechService } from '../src/main/speech';
+import { settingsSchema } from '../src/shared/contracts';
 const request = (text: string, currentResponse = '') => ({
   text,
   currentResponse,
@@ -7,15 +8,14 @@ const request = (text: string, currentResponse = '') => ({
   history: [],
   recentSpeech: [],
 });
-it('avoids a routing call only for clear standalone greetings', () => {
-  expect(fastSpeechDecision(request('Hey Ramesh, how are you?'))).toEqual({ action: 'answer' });
-  for (const text of [
-    'How are you handling errors?',
-    'Hi, design a parking lot',
-    'yes',
-    'um',
-    'How are you? Design a locker.',
-  ])
-    expect(fastSpeechDecision(request(text))).toBeUndefined();
-  expect(fastSpeechDecision(request('How are you?', 'I am well. How are you?'))).toBeUndefined();
+it('uses contextual routing for greetings too, with no query-specific bypass', async () => {
+  const seen: string[] = [];
+  const service = new SpeechService(async (r) => {
+    seen.push(r.text);
+    return { action: 'ignore' };
+  });
+  expect(
+    await service.route(request('Hey Ramesh, how are you?'), settingsSchema.parse({}), 'test'),
+  ).toEqual({ action: 'ignore' });
+  expect(seen).toEqual(['Hey Ramesh, how are you?']);
 });
