@@ -15,6 +15,7 @@ export default function AnswerPanel({
   work: Workspace;
   openSettings: () => void;
 }) {
+  const [focused, setFocused] = useState(true);
   const [copied, setCopied] = useState<string | null>(null);
   const [processingImage, setProcessingImage] = useState(false);
   const imageWork = useRef(0);
@@ -61,21 +62,37 @@ export default function AnswerPanel({
       );
   }
   const scroll = useRef<HTMLDivElement>(null);
+  const readingPositions = useRef(new Map<string, number>());
   const items = useRef(new Map<string, HTMLElement>());
   const latest = work.turns.at(-1);
+  const activeTurn = work.turns.find((turn) => turn.id === work.selected) ?? latest;
   useEffect(() => {
+    if (focused && scroll.current) {
+      scroll.current.scrollTop = readingPositions.current.get(activeTurn?.id ?? '') ?? 0;
+      return;
+    }
     const item = items.current.get(work.selected ?? latest?.id ?? '');
     if (item && scroll.current) {
       const container = scroll.current;
       container.scrollTop +=
         item.getBoundingClientRect().top - container.getBoundingClientRect().top - 20;
     }
-  }, [work.selected, work.navigationRequest, latest?.id]);
+  }, [work.selected, work.navigationRequest, latest?.id, focused]);
   return (
-    <section className="answer-panel" aria-label="Answer workspace">
-      {work.turns.length > 1 && (
+    <section
+      className={`answer-panel ${focused ? 'focused-answer' : ''}`}
+      aria-label="Answer workspace"
+    >
+      {latest && (
         <div className="conversation-toolbar">
-          <span>Conversation · {work.turns.length} exchanges</span>
+          <div className="answer-view-controls" role="group" aria-label="Answer view">
+            <button aria-pressed={focused} onClick={() => setFocused(true)}>
+              Current answer
+            </button>
+            <button aria-pressed={!focused} onClick={() => setFocused(false)}>
+              Conversation · {work.turns.length}
+            </button>
+          </div>
           <button
             className="text-button"
             onClick={() => {
@@ -96,6 +113,10 @@ export default function AnswerPanel({
       )}
       <div
         ref={scroll}
+        onScroll={() => {
+          if (focused && activeTurn && scroll.current)
+            readingPositions.current.set(activeTurn.id, scroll.current.scrollTop);
+        }}
         tabIndex={0}
         aria-label="Conversation answers"
         className={`answer-scroll ${latest ? '' : 'is-empty'}`}
@@ -122,6 +143,7 @@ export default function AnswerPanel({
             return (
               <section
                 className="conversation-turn"
+                hidden={focused && turn.id !== activeTurn?.id}
                 aria-label={`Exchange ${index + 1}`}
                 key={turn.id}
                 ref={(node) => {

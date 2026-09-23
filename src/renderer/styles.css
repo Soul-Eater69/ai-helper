@@ -2150,3 +2150,57 @@ svg {
   overflow: auto;
   padding: 16px;
 }
+
+.conversation-turn[hidden] {
+  display: none;
+}
+.answer-view-controls {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.answer-view-controls button {
+  padding: 6px 10px;
+  border-radius: 7px;
+  font-size: 12px;
+}
+.answer-view-controls button[aria-pressed='true'] {
+  background: #e9eeeb;
+  color: #183b2c;
+}
+.focused-answer .conversation-turn > .markdown {
+  font-size: 17px;
+  line-height: 1.7;
+}
+.coding-guide {
+  flex-shrink: 0;
+  padding: 12px;
+  background: #f2f6f3;
+  border-bottom: 1px solid var(--border);
+}
+.coding-guide-heading {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+.coding-guide-controls {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.coding-guide-controls button {
+  font-size: 11px;
+  padding: 5px 8px;
+  border: 1px solid #cbd8ce;
+  border-radius: 6px;
+}
+.coding-guide-controls button:disabled {
+  opacity: 0.45;
+}
+.coding-active-line {
+  background: #e0edb9;
+}
+.planning-code > span {
+  white-space: pre-wrap;
+}

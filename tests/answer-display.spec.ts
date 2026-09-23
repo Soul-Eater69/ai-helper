@@ -70,6 +70,7 @@ test('spoken guidance and dry-run state are visually separate and fit the panel'
   await expect(page.locator('.conversation-turn').first()).toContainText(
     'Why does checking first handle duplicates?',
   );
+  await page.getByRole('button', { name: 'Conversation · 2', exact: true }).click();
   await expect(page.locator('.conversation-turn').first().getByRole('table')).toHaveCount(1);
   await expect(page.locator('.conversation-turn').last()).toContainText(
     'Explain the complexity next',

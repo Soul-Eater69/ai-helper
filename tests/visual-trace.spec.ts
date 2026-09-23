@@ -497,13 +497,37 @@ test('workspace retains planning and narration through followups and code revisi
   await expect(panel.getByLabel('Design pseudocode', { exact: true })).toContainText('park()');
   await send('Implement it');
   await expect(panel.getByLabel('Full proposed code')).toContainText('return 1');
-  await expect(panel.locator('.coding-script')).toContainText('check the ticket');
+  await expect(panel.locator('.coding-guide')).toContainText('check the ticket');
   await send('Explain the return');
   await expect(panel.getByLabel('Full proposed code')).toContainText('return 1');
-  await expect(panel.locator('.coding-script')).toContainText('check the ticket');
+  await expect(panel.locator('.coding-guide')).toContainText('check the ticket');
   await panel.getByRole('button', { name: 'Accept changes', exact: true }).click();
   await send('Change the returned spot to 2');
   await expect(panel.getByTestId('code-diff')).toBeVisible();
   await panel.getByRole('button', { name: 'Design / pseudocode', exact: true }).click();
   await expect(panel.getByLabel('Design pseudocode', { exact: true })).toContainText('park()');
+});
+
+test('focused answer and coding step survive an explanatory interruption', async ({ page }) => {
+  await supplyAnswers(page, [
+    '## While coding\n\n- **deposit:** I find a free space.\n- **pickup:** I check the code before freeing the space.\n\n```python\ndef deposit():\n    return 1\n\ndef pickup():\n    return 2\n```',
+    '> I check it first so a reused code cannot free another package’s compartment.',
+  ]);
+  await ask(page, 'Implement the design');
+  await expect(page.locator('.response-status').last()).toHaveText('Ready');
+  const panel = page.getByRole('region', { name: 'Code workspace', exact: true });
+  await panel.getByRole('button', { name: 'Full code', exact: true }).click();
+  await panel.getByRole('button', { name: 'Next step', exact: true }).click();
+  await panel.getByRole('button', { name: 'Show in code', exact: true }).click();
+  await expect(panel.locator('[data-active="true"]')).toContainText('def pickup');
+  await ask(page, 'Why check it first?');
+  await expect(page.locator('.response-status').last()).toHaveText('Ready');
+  await expect(page.locator('.conversation-turn:visible')).toHaveCount(1);
+  await expect(page.locator('.conversation-turn:visible')).toContainText('reused code');
+  await expect(panel.getByRole('region', { name: 'Coding narration' })).toContainText('2 / 2');
+  await panel.getByRole('button', { name: 'Back to implementation', exact: true }).click();
+  await expect(page.locator('.conversation-turn:visible')).toContainText('Implement the design');
+  await expect(panel.getByRole('region', { name: 'Coding narration' })).toContainText('2 / 2');
+  await page.getByRole('button', { name: 'Conversation · 2', exact: true }).click();
+  await expect(page.locator('.conversation-turn:visible')).toHaveCount(2);
 });

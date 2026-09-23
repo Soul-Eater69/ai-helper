@@ -158,3 +158,26 @@ slow routing, plus a browser scenario for planning -> follow-up -> implementatio
 -> follow-up -> accepted revision. Chromium installation was attempted but the
 browser download was invalid/truncated, so browser execution remains blocked.
 No live model or Windows microphone evaluation was performed.
+
+## Focused answers and coding narration
+
+The answer panel defaults to the selected exchange, with a Conversation toggle
+for all retained exchanges and the existing latest/earlier navigation. Focused
+answers use larger text. Reading offsets are retained per exchange while the
+panel remains mounted; streamed deltas do not trigger scrolling.
+
+Coding narration is split into labeled steps from the producing answer's While
+coding section. Previous/Next navigation is manual. A uniquely matched method
+name enables Show in code, which highlights its declaration and scrolls there
+only on request. Ambiguous names and general labels remain readable narration
+without an invented code location. Back to implementation selects the producing
+exchange while retaining the coding step during an explanatory follow-up.
+Existing design tabs, requirements, proposal review and manual acceptance remain.
+Steps reset for a different producing answer; closing/remounting the workspace
+also resets local step selection. This is not execution or automatic code tracing.
+
+Added method-matching unit checks and a browser regression for focus mode,
+interruption, resuming the same step and manual highlighting. Browser execution
+remains dependent on an available Playwright Chromium installation; prior install
+attempts in this environment returned invalid archives. No live Windows or model
+performance claim follows from these UI changes.

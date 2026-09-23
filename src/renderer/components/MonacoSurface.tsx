@@ -1,6 +1,19 @@
 import { useEffect, useRef, useState } from 'react';
 import * as monaco from 'monaco-editor';
 
+type CodeFocus = { line: number; request: number };
+function highlight(editor: monaco.editor.IStandaloneCodeEditor | null, focus?: CodeFocus) {
+  if (!editor || !focus) return;
+  const decorations = editor.createDecorationsCollection([
+    {
+      range: new monaco.Range(focus.line, 1, focus.line, 1),
+      options: { isWholeLine: true, className: 'coding-active-line' },
+    },
+  ]);
+  editor.revealLineInCenterIfOutsideViewport(focus.line);
+  return () => decorations.clear();
+}
+
 const options: monaco.editor.IStandaloneEditorConstructionOptions = {
   theme: 'helper-light',
   minimap: { enabled: false },
@@ -21,11 +34,13 @@ export function CodeEditor({
   language,
   onChange,
   readOnly = false,
+  focus,
 }: {
   value: string;
   language: string;
   onChange?: (value: string) => void;
   readOnly?: boolean;
+  focus?: CodeFocus;
 }) {
   const host = useRef<HTMLDivElement>(null);
   const editor = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
@@ -59,6 +74,7 @@ export function CodeEditor({
     const model = editor.current?.getModel();
     if (model) monaco.editor.setModelLanguage(model, language);
   }, [language]);
+  useEffect(() => highlight(editor.current, focus), [focus]);
   return (
     <div
       ref={host}
@@ -73,12 +89,14 @@ export function CodeDiff({
   language,
   originalLabel = 'Before',
   modifiedLabel = 'After',
+  focus,
 }: {
   original: string;
   modified: string;
   language: string;
   originalLabel?: string;
   modifiedLabel?: string;
+  focus?: CodeFocus;
 }) {
   const host = useRef<HTMLDivElement>(null);
   const editor = useRef<monaco.editor.IStandaloneDiffEditor | null>(null);
@@ -164,6 +182,10 @@ export function CodeDiff({
   useEffect(() => {
     editor.current?.updateOptions({ renderSideBySide: sideBySide });
   }, [sideBySide]);
+  useEffect(
+    () => highlight(editor.current?.getModifiedEditor() ?? null, focus),
+    [focus, original, modified],
+  );
   const selected = changes.current[summary.current - 1];
   const snippet = (text: string, start: number, end: number) =>
     end === 0 ? [] : text.split(/\r?\n/).slice(start - 1, end);

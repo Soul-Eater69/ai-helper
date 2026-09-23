@@ -16,6 +16,7 @@ import { languages } from '../../shared/contracts';
 import { extractProposal } from '../../shared/revision';
 import { codingScript, type WorkspacePlan } from '../../shared/planning';
 import AnswerContent from './AnswerContent';
+import CodingGuide from './CodingGuide';
 export default function CodeWorkspace({
   work,
   plans = [],
@@ -60,6 +61,16 @@ export default function CodeWorkspace({
     .reverse()
     .find((turn) => turn.status === 'done' && extractProposal(turn.answer, 0)?.code === shownCode);
   const script = planningView ? plan?.script : codeTurn ? codingScript(codeTurn.answer) : '';
+  const narrationOwner = planningView ? plan?.id : codeTurn?.id;
+  const [focus, setFocus] = useState<{ line: number; request: number }>();
+  const codeSurface = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (focus)
+      codeSurface.current
+        ?.querySelector('[data-active="true"]')
+        ?.scrollIntoView({ block: 'nearest' });
+  }, [focus]);
+  useEffect(() => setFocus(undefined), [shownCode, planning]);
   const stale = !!work.proposal && work.proposal.baseVersion !== work.doc.version;
   const baselineLabel =
     compareWorking || work.proposalBaseSource === 'working' ? 'Working code' : 'Previous proposal';
@@ -242,25 +253,49 @@ export default function CodeWorkspace({
         </label>
       )}
       {view !== 'history' && script && (
-        <details className="coding-script" open>
-          <summary>Say while writing</summary>
-          <div className="coding-script-body markdown">
-            <AnswerContent text={script} />
-          </div>
-        </details>
+        <CodingGuide
+          key={narrationOwner ?? 'planning'}
+          script={script}
+          code={planningView ? planning : shownCode}
+          interrupted={!!narrationOwner && work.selected !== narrationOwner}
+          resume={() => {
+            if (narrationOwner) work.setSelected(narrationOwner);
+          }}
+          locate={(line) =>
+            setFocus((previous) => ({ line, request: (previous?.request ?? 0) + 1 }))
+          }
+        />
       )}
-      <div className="editor-wrap">
+      <div className="editor-wrap" ref={codeSurface}>
         {view === 'overview' ? (
           <div className="workspace-overview markdown">
             <AnswerContent text={plan?.overview ?? ''} />
           </div>
         ) : view === 'full' && work.proposal ? (
           <pre className="planning-code" aria-label="Full proposed code">
-            {work.proposal.code}
+            {work.proposal.code.split('\n').map((line, index) => (
+              <span
+                className={focus?.line === index + 1 ? 'coding-active-line' : ''}
+                data-active={focus?.line === index + 1}
+                key={index}
+              >
+                {line}
+                {'\n'}
+              </span>
+            ))}
           </pre>
         ) : view === 'planning' ? (
           <pre className="planning-code" aria-label="Design pseudocode">
-            {planning}
+            {planning.split('\n').map((line, index) => (
+              <span
+                className={focus?.line === index + 1 ? 'coding-active-line' : ''}
+                data-active={focus?.line === index + 1}
+                key={index}
+              >
+                {line}
+                {'\n'}
+              </span>
+            ))}
           </pre>
         ) : view === 'history' ? (
           <CodeHistory work={work} />
@@ -271,12 +306,14 @@ export default function CodeWorkspace({
             language={work.settings.language}
             originalLabel={baselineLabel}
             modifiedLabel="Proposed code"
+            focus={focus}
           />
         ) : (
           <CodeEditor
             value={work.doc.code}
             language={work.settings.language}
             onChange={work.setCode}
+            focus={focus}
           />
         )}
       </div>
