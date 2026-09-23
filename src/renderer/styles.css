@@ -2111,3 +2111,42 @@ svg {
     Consolas,
     monospace;
 }
+
+.code-tabs {
+  overflow-x: auto;
+}
+.artifact-version {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  font-size: 12px;
+}
+.artifact-version select {
+  min-width: 0;
+  flex: 1;
+}
+.coding-script {
+  flex: 0 0 auto;
+  border-bottom: 1px solid var(--border);
+  padding: 8px 12px;
+  background: #f2f6f3;
+}
+.coding-script summary {
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+}
+.coding-script-body {
+  max-height: 170px;
+  overflow-y: auto;
+}
+.coding-script-body.markdown {
+  font-size: 13px;
+}
+.workspace-overview {
+  position: absolute;
+  inset: 0;
+  overflow: auto;
+  padding: 16px;
+}

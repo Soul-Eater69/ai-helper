@@ -1,4 +1,4 @@
-import { planningCode } from '../shared/planning';
+import { workspacePlans } from '../shared/planning';
 import { useEffect, useState } from 'react';
 import {
   Braces,
@@ -44,8 +44,8 @@ export default function App() {
     if (!latestTurnId) setCodeVisibility(null);
     else if (latestQuestion && startsNewProblem(latestQuestion)) setCodeVisibility(false);
   }, [latestTurnId, latestQuestion]);
-  const selectedTurn = work.turns.find((turn) => turn.id === work.selected);
-  const planning = selectedTurn?.status === 'done' ? planningCode(selectedTurn.answer) : '';
+  const plans = workspacePlans(work.turns);
+  const planning = plans.at(-1)?.id ?? '';
   useEffect(() => {
     if (planning) setCodeVisibility(null);
   }, [planning]);
@@ -299,7 +299,7 @@ export default function App() {
           <AnswerPanel work={work} openSettings={() => setSettingsOpen(true)} />
           {showCode && (
             <CodeWorkspace
-              planning={planning}
+              plans={plans}
               work={work}
               close={() => setCodeVisibility(false)}
               expanded={codeExpanded}

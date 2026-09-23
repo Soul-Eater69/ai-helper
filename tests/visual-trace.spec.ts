@@ -471,3 +471,39 @@ test('planning pseudocode opens a read-only side tab without a source proposal',
     'park(vehicle)',
   );
 });
+
+test('workspace retains planning and narration through followups and code revisions', async ({
+  page,
+}) => {
+  await supplyAnswers(page, [
+    '## Entities\n\n| Class | Job |\n|---|---|\n| Ticket | Links car to spot |',
+    '## While coding\n\n> I find a free spot first.\n\n```pseudocode\npark(): find a free spot\n```',
+    'The ticket finds the assigned spot.',
+    '## While coding\n\n> I check the ticket before freeing the spot.\n\n```python\ndef park():\n    return 1\n```',
+    'That return is the assigned spot.',
+    '## While coding\n\n> I return the updated spot here.\n\n```python\ndef park():\n    return 2\n```',
+  ]);
+  const panel = page.getByRole('region', { name: 'Code workspace', exact: true });
+  const send = async (question: string) => {
+    await ask(page, question);
+    await expect(page.locator('.response-status').last()).toHaveText('Ready');
+  };
+  await send('Design the parking classes');
+  await expect(panel.locator('.workspace-overview')).toContainText('Ticket');
+  await send('Show the class methods');
+  await expect(panel.locator('.workspace-overview')).toContainText('Ticket');
+  await panel.getByRole('button', { name: 'Design / pseudocode', exact: true }).click();
+  await send('Why a ticket?');
+  await expect(panel.getByLabel('Design pseudocode', { exact: true })).toContainText('park()');
+  await send('Implement it');
+  await expect(panel.getByLabel('Full proposed code')).toContainText('return 1');
+  await expect(panel.locator('.coding-script')).toContainText('check the ticket');
+  await send('Explain the return');
+  await expect(panel.getByLabel('Full proposed code')).toContainText('return 1');
+  await expect(panel.locator('.coding-script')).toContainText('check the ticket');
+  await panel.getByRole('button', { name: 'Accept changes', exact: true }).click();
+  await send('Change the returned spot to 2');
+  await expect(panel.getByTestId('code-diff')).toBeVisible();
+  await panel.getByRole('button', { name: 'Design / pseudocode', exact: true }).click();
+  await expect(panel.getByLabel('Design pseudocode', { exact: true })).toContainText('park()');
+});

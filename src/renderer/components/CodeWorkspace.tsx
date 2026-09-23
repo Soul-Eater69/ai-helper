@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import CodeHistory from './CodeHistory';
 import { CodeEditor, CodeDiff } from './MonacoSurface';
 import {
@@ -14,38 +14,52 @@ import {
 import type { Workspace } from '../hooks/useSession';
 import { languages } from '../../shared/contracts';
 import { extractProposal } from '../../shared/revision';
+import { codingScript, type WorkspacePlan } from '../../shared/planning';
+import AnswerContent from './AnswerContent';
 export default function CodeWorkspace({
   work,
-  planning = '',
+  plans = [],
   close,
   expanded,
   toggleExpanded,
 }: {
   work: Workspace;
-  planning?: string;
+  plans?: WorkspacePlan[];
   close: () => void;
   expanded: boolean;
   toggleExpanded: () => void;
 }) {
-  const [view, setView] = useState<'editor' | 'diff' | 'history' | 'planning'>(
-    planning ? 'planning' : 'editor',
-  );
+  const [planId, setPlanId] = useState<string | null>(null);
+  const plan = plans.find((item) => item.id === planId) ?? plans.at(-1);
+  const planning = plan?.code ?? '';
+  const [view, setView] = useState<
+    'editor' | 'full' | 'diff' | 'history' | 'planning' | 'overview'
+  >(plan?.overview ? 'overview' : planning ? 'planning' : work.proposal ? 'diff' : 'editor');
   const [compareWorking, setCompareWorking] = useState(false);
+  const previousProposal = useRef(work.proposal);
   useEffect(() => {
-    setView((current) => (current === 'history' ? current : work.proposal ? 'diff' : 'editor'));
+    const hadProposal = !!previousProposal.current;
+    const isNewProposal = !!work.proposal && work.proposal !== previousProposal.current;
+    previousProposal.current = work.proposal;
+    setView((current) => {
+      if (isNewProposal && current !== 'history')
+        return plan && work.doc.version === 0 && !hadProposal ? 'full' : 'diff';
+      if ((current === 'diff' || current === 'full') && !work.proposal) return 'editor';
+      return current;
+    });
+    setCompareWorking(false);
   }, [work.proposal]);
   useEffect(() => {
-    setView((current) =>
-      planning
-        ? 'planning'
-        : current === 'planning'
-          ? work.proposal
-            ? 'diff'
-            : 'editor'
-          : current,
-    );
-  }, [planning]);
-  useEffect(() => setCompareWorking(false), [work.proposal]);
+    if (!plan)
+      setView((current) => (current === 'planning' || current === 'overview' ? 'editor' : current));
+  }, [plan?.id]);
+  const planningView = view === 'planning' || view === 'overview';
+  const shownCode =
+    (view === 'full' || view === 'diff') && work.proposal ? work.proposal.code : work.doc.code;
+  const codeTurn = [...work.turns]
+    .reverse()
+    .find((turn) => turn.status === 'done' && extractProposal(turn.answer, 0)?.code === shownCode);
+  const script = planningView ? plan?.script : codeTurn ? codingScript(codeTurn.answer) : '';
   const stale = !!work.proposal && work.proposal.baseVersion !== work.doc.version;
   const baselineLabel =
     compareWorking || work.proposalBaseSource === 'working' ? 'Working code' : 'Previous proposal';
@@ -98,6 +112,14 @@ export default function CodeWorkspace({
         </button>
       </div>
       <div className="code-tabs">
+        {plan?.overview && (
+          <button
+            className={view === 'overview' ? 'selected' : ''}
+            onClick={() => setView('overview')}
+          >
+            Overview
+          </button>
+        )}
         {planning && (
           <button
             className={view === 'planning' ? 'selected' : ''}
@@ -109,6 +131,11 @@ export default function CodeWorkspace({
         <button className={view === 'editor' ? 'selected' : ''} onClick={() => setView('editor')}>
           <FileCode2 size={14} /> Editor
         </button>
+        {work.proposal && (
+          <button className={view === 'full' ? 'selected' : ''} onClick={() => setView('full')}>
+            Full code
+          </button>
+        )}
         <button
           className={view === 'diff' ? 'selected' : ''}
           disabled={!work.proposal}
@@ -122,11 +149,29 @@ export default function CodeWorkspace({
         </button>
         <div className="spacer" />
         <button
-          aria-label={view === 'planning' ? 'Copy design pseudocode' : 'Copy working code'}
-          title={view === 'planning' ? 'Copy design pseudocode' : 'Copy working code'}
+          aria-label={
+            planningView
+              ? 'Copy design notes'
+              : view === 'editor'
+                ? 'Copy working code'
+                : 'Copy displayed code'
+          }
+          title={
+            planningView
+              ? 'Copy design notes'
+              : view === 'editor'
+                ? 'Copy working code'
+                : 'Copy displayed code'
+          }
           onClick={() =>
             void navigator.clipboard
-              .writeText(view === 'planning' ? planning : work.doc.code)
+              .writeText(
+                view === 'planning'
+                  ? planning
+                  : view === 'overview'
+                    ? (plan?.overview ?? '')
+                    : shownCode,
+              )
               .then(() => work.setNotice('Code copied'))
               .catch(() =>
                 work.setError('Clipboard access failed. Select and copy the code manually.'),
@@ -138,13 +183,13 @@ export default function CodeWorkspace({
         <button
           aria-label="Undo revision"
           title="Undo last accepted revision"
-          disabled={view === 'history' || !work.doc.previous.length}
+          disabled={planningView || view === 'history' || !work.doc.previous.length}
           onClick={work.undo}
         >
           <Undo2 size={16} />
         </button>
       </div>
-      {work.proposal && view !== 'history' && view !== 'planning' && (
+      {work.proposal && view !== 'history' && !planningView && (
         <div className="proposal-context">
           {request && (
             <details className="proposal-request">
@@ -176,8 +221,44 @@ export default function CodeWorkspace({
           )}
         </div>
       )}
+      {planningView && plans.length > 1 && (
+        <label className="artifact-version">
+          Design version
+          <select
+            aria-label="Design version"
+            value={plan?.id}
+            onChange={(event) => {
+              setPlanId(event.target.value);
+              const chosen = plans.find((item) => item.id === event.target.value);
+              if (view === 'planning' && !chosen?.code) setView('overview');
+            }}
+          >
+            {plans.map((item, index) => (
+              <option key={item.id} value={item.id}>
+                {index + 1} · {item.question.slice(0, 70)}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+      {view !== 'history' && script && (
+        <details className="coding-script" open>
+          <summary>Say while writing</summary>
+          <div className="coding-script-body markdown">
+            <AnswerContent text={script} />
+          </div>
+        </details>
+      )}
       <div className="editor-wrap">
-        {view === 'planning' ? (
+        {view === 'overview' ? (
+          <div className="workspace-overview markdown">
+            <AnswerContent text={plan?.overview ?? ''} />
+          </div>
+        ) : view === 'full' && work.proposal ? (
+          <pre className="planning-code" aria-label="Full proposed code">
+            {work.proposal.code}
+          </pre>
+        ) : view === 'planning' ? (
           <pre className="planning-code" aria-label="Design pseudocode">
             {planning}
           </pre>
@@ -199,10 +280,8 @@ export default function CodeWorkspace({
           />
         )}
       </div>
-      {view === 'planning' && (
-        <div className="code-footer">Planning only · working code is unchanged</div>
-      )}
-      {view !== 'history' && view !== 'planning' && (
+      {planningView && <div className="code-footer">Planning only · working code is unchanged</div>}
+      {view !== 'history' && !planningView && (
         <div className="code-footer">
           {work.proposal ? (
             <>

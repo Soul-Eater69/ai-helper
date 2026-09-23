@@ -50,6 +50,7 @@ export class SpeechQueue {
   }
   private async decide(epoch: number, finalize = false): Promise<void> {
     const text = this.pending;
+    const startedAt = Date.now();
     this.status('Understanding');
     try {
       const decision = finalize
@@ -58,7 +59,9 @@ export class SpeechQueue {
       if (epoch !== this.epoch) return;
       if (decision.action === 'wait' && !finalize) {
         this.status('Brief pause — checking for more');
-        this.timer = setTimeout(() => void this.decide(epoch, true), 1500);
+        // Routing time is already silence; do not add another full pause after a slow call.
+        const remainingPause = Math.max(0, 1500 - (Date.now() - startedAt));
+        this.timer = setTimeout(() => void this.decide(epoch, true), remainingPause);
         return;
       }
       this.pending = '';

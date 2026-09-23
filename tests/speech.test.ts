@@ -256,3 +256,24 @@ it('holds final fragments during pause until capture is drained', async () => {
   await vi.advanceTimersByTimeAsync(0);
   expect(answer).toHaveBeenCalledWith('Which vehicles should we support?', []);
 });
+
+it('counts slow routing toward the silence window instead of adding another full pause', async () => {
+  vi.useFakeTimers();
+  const answer = vi.fn();
+  const route = vi
+    .fn()
+    .mockImplementationOnce(
+      () => new Promise((resolve) => setTimeout(() => resolve({ action: 'wait' }), 3600)),
+    )
+    .mockResolvedValueOnce({ action: 'answer' });
+  const queue = new SpeechQueue(
+    route,
+    answer,
+    () => {},
+    () => {},
+  );
+  queue.final('Explain how the parking allocation works');
+  await vi.advanceTimersByTimeAsync(3951);
+  expect(route).toHaveBeenCalledTimes(2);
+  expect(answer).toHaveBeenCalledTimes(1);
+});

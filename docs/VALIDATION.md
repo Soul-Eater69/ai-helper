@@ -122,3 +122,39 @@ changes and cannot validate the new prompt. Live evaluation credentials are abse
 no provider evaluation was run. The practice browser flow is blocked by missing
 Playwright Chromium. Unit checks, typechecking and build are integration checks,
 not evidence that generated replies consistently sound natural.
+
+## 2026-09-23 progressive LLD workspace and routing pause
+
+The second uploaded diagnostic file is byte-identical to the first, with prompt
+2.15.1. It cannot show regressions or improvements from 2.16–2.18. The recorded
+router took about 0.9–3.7 seconds for completed decisions; request-to-first-answer
+text took about 0.9–5.1 seconds. Provider variation remains outside this fix.
+
+A slow wait decision used to add another 1500ms before the final routing check.
+Routing time now counts toward that pause. A fake-timer regression fails before
+the fix and passes afterward for a 3600ms router response. The final semantic
+check remains, as do epoch guards for new speech and cancellation. No instant
+response guarantee or live-provider speedup measurement is claimed.
+
+Workspace artifacts now come from completed retained turns for the current
+explicitly marked problem, independently of the selected chat message. Overview
+notes and pseudocode accumulate through discussion and remain accessible during
+implementation. Follow-ups without new artifacts do not clear them or change the
+chosen tab. An actual implementation proposal advances planning to full code; later
+accepted-code revisions open the diff. A version selector revisits earlier retained design artifacts. Full
+proposed code is available beside the existing diff and working editor. Narration
+comes from the answer that produced the displayed artifact/code, not the latest
+unrelated reply. Working-code edits, manual acceptance, stale-version checks and
+revision history retain their existing behavior. Artifacts share the existing
+conversation retention limit; this is not a new unlimited archive.
+
+Prompt 2.18 uses requirements -> entities -> class design -> implementation ->
+extensibility. Normal planning provides pseudocode first; direct implementation
+requests need not repeat settled planning. While coding notes use actual method
+names and spoken explanations. Extensions are discussed, not implemented unasked.
+
+Added unit regressions for retention, staged overview/pseudocode, narration and
+slow routing, plus a browser scenario for planning -> follow-up -> implementation
+-> follow-up -> accepted revision. Chromium installation was attempted but the
+browser download was invalid/truncated, so browser execution remains blocked.
+No live model or Windows microphone evaluation was performed.
