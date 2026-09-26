@@ -115,3 +115,14 @@ it('pitches the voice at the chosen experience level instead of a fixed junior v
     /senior engineer/,
   );
 });
+
+it('keeps substantive speech in the Say this block for every topic', () => {
+  for (const topics of [[], ['behavioral'], ['dsa'], ['lld']] as const) {
+    expect(buildInstructions(settingsSchema.parse({}), topics)).toMatch(
+      /substantive candidate speech[^.]*Markdown blockquote/,
+    );
+  }
+  expect(buildInstructions(settingsSchema.parse({}), ['behavioral'])).toMatch(
+    /do not invent reviews, helpers or coordination/,
+  );
+});

@@ -28,19 +28,19 @@ it('inherits the ongoing topic for short follow-ups and clarification answers', 
   ]);
 });
 
-it('reasons only for substantial technical turns', () => {
-  expect(needsReasoning('Can you implement it now?', ['dsa'])).toBe(true);
-  expect(needsReasoning('Yes', ['dsa'])).toBe(false);
+it('reasons only where the A/B run showed it could pay off', () => {
+  expect(needsReasoning('Can you optimize this to run faster?', ['dsa'])).toBe(true);
+  expect(needsReasoning('There is a bug, it fails for empty input. Fix it.', ['dsa'])).toBe(true);
+  expect(needsReasoning('x'.repeat(300), ['dsa'])).toBe(true);
+  expect(needsReasoning('Sounds good, go ahead and code it in Python.', ['dsa'])).toBe(false);
+  expect(needsReasoning('Walk me through a dry run with abcabcbb.', ['dsa'])).toBe(false);
   expect(
     needsReasoning(
       'Given a string s, find the length of the longest substring without repeating characters.',
       ['dsa'],
     ),
-  ).toBe(true);
-  expect(
-    needsReasoning('Single level, one entry and one exit, bikes and cars only.', ['lld']),
   ).toBe(false);
-  expect(needsReasoning('Walk me through a dry run', ['dsa'])).toBe(true);
+  expect(needsReasoning('Yes', ['dsa'])).toBe(false);
   expect(needsReasoning('Tell me about a time you failed', ['behavioral'])).toBe(false);
   expect(needsReasoning('How are you?', [])).toBe(false);
 });

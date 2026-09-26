@@ -49,21 +49,19 @@ export function detectTopics(input: {
 }
 
 const HEAVY =
-  /\b(?:implement|write|code|coding|solve|solution|optimi[sz]e|complexity|dry\s*run|trace|walk\s*(?:me\s*)?through|debug|bug|fix|revise|refactor|edge\s*cases?|design\s+(?:a|an|the)|approach|prove|why\s+does\s+(?:this|it)\s+work)\b/i;
+  /\b(?:optimi[sz]e|faster|better than|improve (?:the|this|it)|prove|why does (?:this|it) work|correctness|debug|bug|fix|wrong answer|fails?|failing|revise|refactor|follow[- ]up variant|what if the input)\b/i;
 
 /**
- * Whether a turn is worth a small amount of reasoning. New technical problems, code
- * generation, traces and fixes benefit; greetings, clarification answers and short
- * conversational follow-ups are answered instantly.
+ * Whether a turn is worth a small amount of reasoning. A live A/B run showed instant
+ * answers were as good as low effort for standard problems, explanations, first
+ * implementations and dry runs, while low effort added ~0.8s to the first token and
+ * several seconds overall. Reasoning is kept for long statements, optimizations,
+ * correctness questions and fixing or revising code.
  */
 export function needsReasoning(question: string, topics: readonly Mode[]): boolean {
   const technical = topics.includes('dsa') || topics.includes('lld');
   if (!technical) return false;
   const text = question.trim();
-  if (text.length > 280) return true; // a pasted or dictated problem statement
-  // A technical statement in its own right ("Given a string s, find ..."), not a short
-  // clarification answer that only inherited the topic from earlier turns.
-  const ownTopics = topicsIn(text);
-  if (text.length >= 60 && (ownTopics.includes('dsa') || ownTopics.includes('lld'))) return true;
+  if (text.length > 280) return true; // a long pasted or dictated problem statement
   return HEAVY.test(text);
 }

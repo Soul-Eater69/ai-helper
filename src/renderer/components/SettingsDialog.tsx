@@ -135,9 +135,9 @@ export default function SettingsDialog({ work, close }: { work: Workspace; close
                 <option value="custom">Custom / model default</option>
               </select>
               <p className="field-help">
-                Adaptive answers greetings, clarifications and follow-ups instantly and uses low
-                reasoning only for new coding or design problems, code changes and traces. Instant
-                never reasons; Thinking always uses medium reasoning.
+                Adaptive answers instantly and uses low reasoning only for optimizations,
+                correctness questions, bug fixes, code revisions and long pasted problem statements.
+                Instant never reasons; Thinking always uses medium reasoning.
               </p>
             </div>
             <div>

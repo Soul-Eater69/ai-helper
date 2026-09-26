@@ -50,11 +50,10 @@ it('preserves an existing model and uses adaptive effort when loading older sett
   expect(settingsSchema.parse({ answerReasoning: 'auto' }).answerReasoning).toBe('auto');
 });
 
-it('uses low effort in adaptive mode for a new technical problem', async () => {
+it('uses low effort in adaptive mode when asked to optimize a solution', async () => {
   const request = answerRequestSchema.parse({
     id: 'adaptive-hard',
-    question:
-      'Implement a function that returns the longest substring without repeating characters.',
+    question: 'Can you optimize the substring solution so it runs faster than quadratic time?',
     code: '',
     codeVersion: 0,
     language: 'python',
