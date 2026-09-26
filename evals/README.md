@@ -41,3 +41,13 @@ It runs the scripted conversations in `evals/compare-conversations.json` (greeti
 Options: `--base <git ref>` compares against another commit or branch; `--only greeting,behavioral-amazon` runs selected conversations. Environment: `AI_HELPER_EVAL_MODEL` (default `gpt-5.6-sol`), `AI_HELPER_EVAL_BASE_REASONING` (default `none`, matching the old Instant preset) and `AI_HELPER_EVAL_NEW_REASONING` (default `adaptive`).
 
 Output goes to ignored `.eval-results/compare-*.md` and a matching `.json`. The Markdown report starts with latency summaries: median and p90 time to first token and total time per version, latency grouped by the reasoning effort actually sent, and a per-conversation table. Each answer then shows its effort, time to first token, total time, word count and heuristic check results, with a line per turn for your verdict. The JSON also records the time until response headers and the prompt size sent. The key is never printed or saved, and provider errors are recorded only as status and code. Timing covers the answer provider only; the app's early preparation usually hides part of the new version's reasoning time, so live use can feel faster than these numbers. Run it a few times, since answers vary.
+
+## Bar-raiser grading for behavioral answers
+
+Add `--judge` to grade every behavioral answer the way an Amazon bar raiser would for an SDE II candidate: a rating from Strong No Hire to Strong Hire, the leadership principles it probes, STAR completeness, strengths, gaps, any claims not supported by the supplied story facts, and what would lift it to Strong Hire. Fabricated specifics cap the rating at Lean No Hire. A `[Context needed]` reply is marked Not rated.
+
+```sh
+OPENAI_API_KEY=... npm run eval:compare -- --live --judge --new-only --only behavioral-amazon,behavioral-loop,behavioral-missing-story
+```
+
+`--new-only` skips the baseline to halve the cost. The grader uses `AI_HELPER_EVAL_JUDGE_MODEL` (default: the answer model) with medium reasoning on GPT-5.x models. The report adds a rating table per version and the grade under each answer. An automated grader is a signal, not a verdict; read the gaps it lists.

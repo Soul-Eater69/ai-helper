@@ -17,6 +17,8 @@ const option = (name, fallback) => {
 const live = args.includes('--live');
 const baseRef = option('base', 'main');
 const only = option('only', '');
+const judge = args.includes('--judge');
+const newOnly = args.includes('--new-only');
 const project = fileURLToPath(new URL('..', import.meta.url));
 const fixture = JSON.parse(
   await readFile(new URL('../evals/compare-conversations.json', import.meta.url), 'utf8'),
@@ -24,7 +26,7 @@ const fixture = JSON.parse(
 const scenarios = fixture.scenarios.filter((s) => !only || only.split(',').includes(s.name));
 const turnCount = scenarios.reduce((sum, s) => sum + s.turns.length, 0);
 const model = process.env.AI_HELPER_EVAL_MODEL || 'gpt-5.6-sol';
-const variants = [
+const allVariants = [
   {
     id: 'baseline',
     label: `Baseline (${baseRef})`,
@@ -36,14 +38,19 @@ const variants = [
     reasoning: process.env.AI_HELPER_EVAL_NEW_REASONING || 'adaptive',
   },
 ];
+const variants = newOnly ? allVariants.filter((v) => v.id === 'candidate') : allVariants;
+const judgeModel = process.env.AI_HELPER_EVAL_JUDGE_MODEL || model;
+const judgedTurns = scenarios
+  .filter((s) => s.behavioral)
+  .reduce((sum, s) => sum + s.turns.length, 0);
 
 if (!live) {
   console.log(
-    `Plan only: ${scenarios.length} conversations, ${turnCount} turns, ${turnCount * 2} model requests (${variants.map((v) => `${v.id}: reasoning ${v.reasoning}`).join(', ')}), model ${model}. No API calls made.`,
+    `Plan only: ${scenarios.length} conversations, ${turnCount} turns, ${turnCount * variants.length + (judge ? judgedTurns * variants.length : 0)} model requests${judge ? ` (including ${judgedTurns * variants.length} bar-raiser grades by ${judgeModel})` : ''} (${variants.map((v) => `${v.id}: reasoning ${v.reasoning}`).join(', ')}), model ${model}. No API calls made.`,
   );
   for (const s of scenarios) console.log(`  ${s.name}: ${s.turns.length} turns`);
   console.log(
-    'To run: set OPENAI_API_KEY (and optionally AI_HELPER_EVAL_MODEL), then npm run eval:compare -- --live. Options: --base <git ref>, --only <scenario,...>. API usage is billed to your account.',
+    'To run: set OPENAI_API_KEY (and optionally AI_HELPER_EVAL_MODEL), then npm run eval:compare -- --live. Options: --base <git ref>, --only <scenario,...>, --new-only (skip the baseline), --judge (grade behavioral answers like an Amazon bar raiser). API usage is billed to your account.',
   );
   process.exit(0);
 }
@@ -68,6 +75,101 @@ const resolveRef = (ref) => {
   }
   throw new Error(`Cannot find git ref "${ref}". Fetch it first (git fetch origin ${ref}).`);
 };
+
+const RATINGS = ['Strong No Hire', 'No Hire', 'Lean No Hire', 'Lean Hire', 'Hire', 'Strong Hire'];
+const JUDGE_INSTRUCTIONS = `You are an experienced Amazon bar raiser grading one spoken answer from a mid-level (SDE II) software engineering candidate in a behavioral interview. Be demanding and specific; do not reward length or polish for its own sake.
+
+Rate the answer as one of: ${RATINGS.join(', ')}. Use "Not rated" only when the answer is a note asking the user for missing personal facts ([Context needed]) instead of an answer; that is the correct behavior when no supplied story fits, so explain whether asking was justified.
+
+Judge against Amazon's bar:
+1. Answers the exact question and gives clear signal for the leadership principle(s) it probes.
+2. STAR: brief situation and task, detailed actions, a concrete result, a learning. For a follow-up probe, judge only whether it answers the probe directly with new depth instead of retelling.
+3. Ownership: "I" for the candidate's own decisions and actions; a clear line between their work and the team's.
+4. Data: specific metrics and evidence behind decisions and results.
+5. Judgment: stakes, trade-offs, alternatives considered and why the chosen action was right.
+6. Scope appropriate for a mid-level engineer.
+7. Delivery: sounds natural spoken aloud; about 2 minutes for a first answer, much shorter for a probe.
+
+Grounding is critical. The candidate's real experience is exactly the supplied facts. List every concrete claim (an action, person, reaction, metric, event or detail) that the facts do not support. Reasonable paraphrase and generic framing are fine; new specifics are fabrications. Fabricated specifics cap the rating at Lean No Hire, because they collapse under a bar raiser's follow-up probing.
+
+Return only the JSON object required by the schema.`;
+const JUDGE_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  required: [
+    'rating',
+    'principles_probed',
+    'star',
+    'strengths',
+    'gaps',
+    'fabricated_claims',
+    'to_reach_strong_hire',
+  ],
+  properties: {
+    rating: { type: 'string', enum: [...RATINGS, 'Not rated'] },
+    principles_probed: { type: 'array', items: { type: 'string' } },
+    star: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['situation', 'task', 'action', 'result', 'learning'],
+      properties: Object.fromEntries(
+        ['situation', 'task', 'action', 'result', 'learning'].map((k) => [k, { type: 'boolean' }]),
+      ),
+    },
+    strengths: { type: 'array', items: { type: 'string' } },
+    gaps: { type: 'array', items: { type: 'string' } },
+    fabricated_claims: { type: 'array', items: { type: 'string' } },
+    to_reach_strong_hire: { type: 'string' },
+  },
+};
+const storyFacts = [
+  `Profile: ${fixture.profile}`,
+  ...fixture.stories.map((story) =>
+    [
+      `Story: ${story.title}`,
+      ...['situation', 'task', 'action', 'result', 'learning']
+        .filter((k) => story[k])
+        .map((k) => `${k}: ${story[k]}`),
+    ].join('\n'),
+  ),
+].join('\n\n');
+let judgeClient;
+async function gradeAnswer(question, history, answer) {
+  if (!judgeClient) {
+    const OpenAI = createRequire(join(project, 'package.json'))('openai');
+    judgeClient = new (OpenAI.default ?? OpenAI)({
+      apiKey: process.env.OPENAI_API_KEY,
+      maxRetries: 1,
+      timeout: 120000,
+    });
+  }
+  const conversation = history
+    .slice(-6)
+    .map((m) => `${m.role === 'user' ? 'Interviewer' : 'Candidate'}: ${m.content.slice(0, 3000)}`)
+    .join('\n\n');
+  const reasoningModel = /^gpt-5\.\d+/.test(judgeModel) && !/chat/i.test(judgeModel);
+  try {
+    const response = await judgeClient.responses.create({
+      model: judgeModel,
+      store: false,
+      instructions: JUDGE_INSTRUCTIONS,
+      ...(reasoningModel ? { reasoning: { effort: 'medium' } } : {}),
+      max_output_tokens: 6000,
+      input: `Supplied facts (the candidate's only real experience):\n${storyFacts}\n\nEarlier conversation:\n${conversation || '(none)'}\n\nQuestion being graded:\n${question}\n\nCandidate's answer:\n${answer}`,
+      text: {
+        format: {
+          type: 'json_schema',
+          name: 'bar_raiser_grade',
+          strict: true,
+          schema: JUDGE_SCHEMA,
+        },
+      },
+    });
+    return JSON.parse(response.output_text);
+  } catch (caught) {
+    return { error: { status: caught?.status ?? null, code: caught?.code ?? null } };
+  }
+}
 
 const directory = join(project, '.eval-results');
 await mkdir(directory, { recursive: true });
@@ -172,11 +274,11 @@ try {
   const baseCommit = resolveRef(baseRef);
   report.baseCommit = baseCommit;
   report.candidateCommit = `${git('rev-parse', 'HEAD')}${git('status', '--porcelain') ? ' + uncommitted changes' : ''}`;
-  git('worktree', 'add', '--detach', baseTree, baseCommit);
-  const apis = {
-    baseline: await loadApi(baseTree, 'baseline'),
-    candidate: await loadApi(project, 'candidate'),
-  };
+  const apis = { candidate: await loadApi(project, 'candidate') };
+  if (!newOnly) {
+    git('worktree', 'add', '--detach', baseTree, baseCommit);
+    apis.baseline = await loadApi(baseTree, 'baseline');
+  }
   for (const variant of variants) {
     const api = apis[variant.id];
     variant.settings = settingsFor(api, variant.reasoning);
@@ -252,7 +354,7 @@ try {
             ? { contextNeededNote: /\[Context needed\]/i.test(output) === turn.expectContextNeeded }
             : {}),
         };
-        report.results.push({
+        const row = {
           scenario: scenario.name,
           turn: index + 1,
           variant: variant.id,
@@ -268,11 +370,14 @@ try {
           questionsAsked: (spoken.match(/\?/g) || []).length,
           checks,
           error,
-        });
+        };
+        if (judge && scenario.behavioral && output.trim() && !error)
+          row.grade = await gradeAnswer(turn.question, history, output);
+        report.results.push(row);
         await writeFile(jsonFile, JSON.stringify(report, null, 2));
         const passed = Object.values(checks).every(Boolean);
         console.log(
-          `${scenario.name} #${index + 1} ${variant.id} [effort ${wire?.effort ?? '-'}]: ${passed ? 'checks ok' : 'CHECK FAILED'}, first token ${firstDeltaMs ?? '-'} ms, total ${Math.round(performance.now() - started)} ms${error ? `, error ${error.status ?? ''} ${error.code ?? ''}` : ''}`,
+          `${scenario.name} #${index + 1} ${variant.id} [effort ${row.effort ?? '-'}]: ${passed ? 'checks ok' : 'CHECK FAILED'}, first token ${firstDeltaMs ?? '-'} ms, total ${row.totalMs} ms${row.grade?.rating ? `, bar raiser: ${row.grade.rating}` : ''}${error ? `, error ${error.status ?? ''} ${error.code ?? ''}` : ''}`,
         );
         if (error) break;
         if (proposal) code = proposal.code;
@@ -328,6 +433,23 @@ try {
       return `| ${scenario.name} | ${cells.join(' | ')} |`;
     }),
     '',
+    ...(judge
+      ? [
+          '## Bar-raiser grades (behavioral answers)',
+          '',
+          `Graded by ${judgeModel} against an Amazon SDE II bar. An automated grader is a signal, not a verdict; read the gaps.`,
+          '',
+          `| Version | ${[...RATINGS].reverse().join(' | ')} | Not rated | Graded | Fabrications |`,
+          `| --- | ${RATINGS.map(() => '---').join(' | ')} | --- | --- | --- |`,
+          ...report.variants.map((v) => {
+            const graded = byVariant(v.id).filter((r) => r.grade?.rating);
+            const count = (rating) => graded.filter((r) => r.grade.rating === rating).length;
+            const fabricated = graded.filter((r) => r.grade.fabricated_claims?.length).length;
+            return `| ${v.label} | ${[...RATINGS].reverse().map(count).join(' | ')} | ${count('Not rated')} | ${graded.length} | ${fabricated} answers |`;
+          }),
+          '',
+        ]
+      : []),
     `_${report.note}_`,
     '',
   ];
@@ -348,9 +470,34 @@ try {
           '',
           row.output.trim() || '_(no output)_',
           '',
+          ...(row.grade?.rating
+            ? [
+                `**Bar raiser: ${row.grade.rating}**${row.grade.principles_probed?.length ? ` · probes ${row.grade.principles_probed.join(', ')}` : ''}`,
+                '',
+                ...(row.grade.strengths?.length
+                  ? [`- Strengths: ${row.grade.strengths.join('; ')}`]
+                  : []),
+                ...(row.grade.gaps?.length ? [`- Gaps: ${row.grade.gaps.join('; ')}`] : []),
+                ...(row.grade.fabricated_claims?.length
+                  ? [`- **Fabricated:** ${row.grade.fabricated_claims.join('; ')}`]
+                  : []),
+                `- To reach Strong Hire: ${row.grade.to_reach_strong_hire}`,
+                '',
+              ]
+            : row.grade?.error
+              ? [
+                  `_Bar-raiser grade failed (${row.grade.error.status ?? ''} ${row.grade.error.code ?? ''})._`,
+                  '',
+                ]
+              : []),
         );
       }
-      lines.push('Better: baseline / new / tie — notes:', '', '---', '');
+      lines.push(
+        variants.length > 1 ? 'Better: baseline / new / tie — notes:' : 'Notes:',
+        '',
+        '---',
+        '',
+      );
     }
   }
   await writeFile(mdFile, lines.join('\n'));

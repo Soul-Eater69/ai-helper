@@ -35,6 +35,29 @@
       "action": "I pulled a week of query logs and showed that 2% of query patterns caused most of the slow responses. I raised it in our design review with the data, suggested fixing those queries first, and agreed to add the cache later if latency was still high.",
       "result": "We optimized the top five query patterns first. p95 latency dropped from 1.8 seconds to 400 milliseconds, and the team decided the cache was not needed yet.",
       "learning": "Bringing data and a concrete alternative turned a disagreement into a quick decision."
+    },
+    {
+      "id": "fictional-missed-deadline",
+      "title": "Missed a launch date by underestimating a migration",
+      "principles": ["Deliver Results", "Earn Trust", "Are Right, A Lot"],
+      "keywords": "failure missed deadline estimate migration",
+      "isFailure": true,
+      "situation": "I committed to moving our payment reconciliation job to a new database in three weeks so finance could close the quarter on the new system.",
+      "task": "I owned the estimate and the migration.",
+      "action": "I estimated from the schema size but did not check how many downstream reports read the old tables. In week two I found eleven reports that would break. I told my manager and the finance lead the same day, gave a new date with a list of the reports and an owner for each, and kept the old job running in parallel so finance could still close the quarter.",
+      "result": "We launched nine days late. Finance closed the quarter on time using the old job, and no report broke after the switch.",
+      "learning": "I now list every reader of the data before I give a migration estimate, and I share the estimate with its assumptions so people can challenge them."
+    },
+    {
+      "id": "fictional-customer",
+      "title": "Changed search ranking after reading support tickets",
+      "principles": ["Customer Obsession", "Dive Deep"],
+      "keywords": "customer support tickets search ranking complaints",
+      "situation": "Internal users kept filing support tickets saying search could not find documents they knew existed. The team treated it as user error because our relevance metrics looked fine.",
+      "task": "I was on the search team and wanted to understand the gap between our metrics and the complaints.",
+      "action": "I read about 150 tickets and grouped them. Most were searches for exact document IDs and acronyms, which our text analyzer split into pieces. I added an exact-match field and boosted it for ID-shaped queries, and I added those ticket queries to our relevance test set so the metric would catch it next time.",
+      "result": "Search-related tickets fell from about 40 a month to 6 within two months, and the new test set caught two later regressions before release.",
+      "learning": "When customer complaints and our metrics disagree, the metric is usually measuring the wrong thing."
     }
   ],
   "scenarios": [
@@ -142,7 +165,8 @@
           "expectFacts": ["query logs|2%", "400"],
           "review": "Uses the caching disagreement story; shows data, respectful pushback, commit."
         }
-      ]
+      ],
+      "behavioral": true
     },
     {
       "name": "behavioral-missing-story",
@@ -152,7 +176,36 @@
           "expectContextNeeded": true,
           "review": "No mentoring story exists: must not invent one; should emit a [Context needed] note instead of a fabricated story."
         }
-      ]
+      ],
+      "behavioral": true
+    },
+    {
+      "name": "behavioral-loop",
+      "turns": [
+        {
+          "question": "Tell me about a time you failed.",
+          "expectFacts": ["eleven|11", "nine days|9 days"],
+          "review": "Uses the missed-deadline story; owns the mistake plainly; explains the fix and what changed afterwards."
+        },
+        {
+          "question": "How did your manager react, and how did you rebuild trust?",
+          "review": "Only supplied facts (told manager and finance same day, new date with owners, parallel job); no invented reaction; [Context needed] if the manager's reaction is required."
+        },
+        {
+          "question": "Tell me about a time you went out of your way for a customer.",
+          "expectFacts": ["150|tickets", "40|6"],
+          "review": "Uses the support-ticket search story; customer view first; data; metric result."
+        },
+        {
+          "question": "How did you know your fix actually worked?",
+          "review": "Ticket drop 40 to 6 and the test set catching two regressions; no invented metrics."
+        },
+        {
+          "question": "Tell me about a time you had to dig deep to find the root cause of a problem.",
+          "review": "Picks a fitting story not already told this session (e.g. caching logs analysis or checkout logs), with concrete investigation steps."
+        }
+      ],
+      "behavioral": true
     }
   ]
 }
