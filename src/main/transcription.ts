@@ -24,6 +24,15 @@ function providerError(value: unknown): TranscriptionError {
     `OpenAI transcription error: ${code}${param ? ` at ${param}` : ''}. ${hint}`,
   );
 }
+/**
+ * Spelling hint for the transcriber. Interview audio is full of terms a general speech
+ * model mishears ("in degree", "two some", "tri"); listing them improves accuracy without
+ * adding latency. The candidate name helps greetings addressed to the candidate.
+ */
+export function transcriptionVocabulary(candidateName = ''): string {
+  const name = candidateName.trim() ? `Candidate: ${candidateName.trim()}. ` : '';
+  return `${name}Technical interview about algorithms, data structures and low-level design. Terms: LeetCode, Two Sum, hash map, hash set, array, subarray, linked list, binary search, two pointers, sliding window, prefix sum, BFS, DFS, trie, heap, priority queue, deque, indegree, topological sort, Dijkstra, union find, dynamic programming, memoization, recursion, backtracking, O(n), O(log n), O(n log n), time complexity, space complexity, edge cases, dry run, low-level design, LLD, parking lot, LRU cache, rate limiter, singleton, factory, strategy pattern, observer, STAR.`;
+}
 export class TranscriptionService {
   private socket?: WebSocket;
   private epoch = 0;
@@ -59,8 +68,11 @@ export class TranscriptionService {
     this.droppedChunks = 0;
     return stats;
   }
-  async start(key: string, model: string): Promise<void> {
+  /** Vocabulary hint for the transcriber (names and technical terms); not an instruction. */
+  private prompt = '';
+  async start(key: string, model: string, prompt = ''): Promise<void> {
     this.stop(false);
+    this.prompt = prompt.slice(0, 1000);
     this.running = true;
     this.retries = 0;
     const epoch = this.epoch;
@@ -191,7 +203,7 @@ export class TranscriptionService {
                   transcription:
                     model === 'gpt-live-transcribe'
                       ? { model, languages: ['en'], delay: 'low' }
-                      : { model, language: 'en' },
+                      : { model, language: 'en', ...(this.prompt ? { prompt: this.prompt } : {}) },
                   turn_detection: {
                     type: 'server_vad',
                     threshold: 0.5,

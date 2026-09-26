@@ -12,7 +12,7 @@ import { Vault } from './storage';
 import { createOpenAIProvider } from './assistant';
 import { SessionController } from './session-controller';
 import { SpeechService } from './speech';
-import { TranscriptionService } from './transcription';
+import { TranscriptionService, transcriptionVocabulary } from './transcription';
 import {
   diagnosticSignalSchema,
   settingsSchema,
@@ -268,7 +268,11 @@ async function boot(): Promise<void> {
       model: settings.transcriptionModel,
       autoAnswer: settings.autoAnswer,
     });
-    await transcription.start(key, settings.transcriptionModel);
+    await transcription.start(
+      key,
+      settings.transcriptionModel,
+      transcriptionVocabulary(settings.candidateName),
+    );
     if (epoch !== startEpoch) return;
     captureGrant = { source, expires: Date.now() + 30000 };
   });

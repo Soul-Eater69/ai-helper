@@ -116,20 +116,28 @@ export default function SettingsDialog({ work, close }: { work: Workspace; close
                 }
                 onChange={(e) => {
                   const value = e.target.value;
-                  if (value === 'none' || value === 'medium') {
+                  if (
+                    value === 'adaptive' ||
+                    value === 'none' ||
+                    value === 'low' ||
+                    value === 'medium'
+                  ) {
                     setDraft({ ...draft, model: 'gpt-5.6-sol', answerReasoning: value });
                   } else {
                     setDraft({ ...draft, answerReasoning: 'auto' });
                   }
                 }}
               >
-                <option value="custom">Custom / model default</option>
-                <option value="medium">GPT-5.6 Sol — Thinking</option>
+                <option value="adaptive">GPT-5.6 Sol — Adaptive (recommended)</option>
                 <option value="none">GPT-5.6 Sol — Instant</option>
+                <option value="low">GPT-5.6 Sol — Quick thinking</option>
+                <option value="medium">GPT-5.6 Sol — Thinking</option>
+                <option value="custom">Custom / model default</option>
               </select>
               <p className="field-help">
-                Thinking uses medium reasoning. Instant turns reasoning off for quicker replies.
-                Both use GPT-5.6 Sol through your API account.
+                Adaptive answers greetings, clarifications and follow-ups instantly and uses low
+                reasoning only for new coding or design problems, code changes and traces. Instant
+                never reasons; Thinking always uses medium reasoning.
               </p>
             </div>
             <div>
@@ -138,7 +146,7 @@ export default function SettingsDialog({ work, close }: { work: Workspace; close
                 id="answer-model"
                 value={draft.model}
                 onChange={(e) =>
-                  setDraft({ ...draft, model: e.target.value, answerReasoning: 'auto' })
+                  setDraft({ ...draft, model: e.target.value, answerReasoning: 'adaptive' })
                 }
               />
             </div>

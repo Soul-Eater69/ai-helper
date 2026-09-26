@@ -32,6 +32,12 @@ npm start
 
 Open **Settings**, enter an OpenAI API key, select models available to your API account, and add your verified experience. The default answer model is configurable; the default transcription model is `gpt-4o-mini-transcribe`. Model availability depends on your account. API charges are separate from a ChatGPT subscription.
 
+### Answer speed and quality
+
+The default **Adaptive** answer preset keeps replies fast without giving up reasoning where it matters. Greetings, clarification answers and short follow-ups are answered with reasoning off; new coding or design problems, code changes, traces and long dictated statements get low reasoning. Early preparation starts that request on the first pause, so the reasoning usually overlaps with the pause and routing check. **Instant**, **Quick thinking** (low) and **Thinking** (medium) force one effort level. Explicit effort is sent only to GPT-5.x reasoning models; if a model rejects it, the request is retried with the model default.
+
+Each request carries only the guidance for the topics the turn needs (DSA, LLD, behavioral, plus the visual dry-run protocol for DSA/LLD). Short follow-ups inherit the topic of the ongoing thread. The question is sent first as plain labelled text rather than JSON, and experience facts are included only on behavioral or conversational turns. Transcription receives a vocabulary hint with common algorithm and design terms and the candidate name.
+
 For development, use `npm run dev`. Renderer edits reload automatically; restart the command after changing main/preload code.
 
 ### Audio with Zoom

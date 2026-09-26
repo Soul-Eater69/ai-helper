@@ -66,7 +66,8 @@ export const settingsSchema = z
       .max(100)
       .regex(/^[a-zA-Z0-9_.:-]+$/)
       .default('gpt-5.6-sol'),
-    answerReasoning: z.enum(['auto', 'none', 'medium']).default('auto'),
+    /** adaptive: instant for conversational turns, low effort for new technical problems. */
+    answerReasoning: z.enum(['adaptive', 'auto', 'none', 'low', 'medium']).default('adaptive'),
     /**
      * Model for the answer/wait/ignore routing call. It runs on every speech pause and
      * returns one enum value, so it does not need the answer model. Blank falls back to
