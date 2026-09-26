@@ -126,3 +126,11 @@ it('keeps substantive speech in the Say this block for every topic', () => {
     /do not invent reviews, helpers or coordination/,
   );
 });
+
+it('puts grounding first and forbids invented reactions and alternatives', () => {
+  const prompt = buildInstructions(settingsSchema.parse({}), ['behavioral']);
+  expect(prompt).toMatch(/behavioral: Grounding comes first/);
+  expect(prompt).toMatch(/what anyone else said, felt, thought or did/);
+  expect(prompt).toMatch(/never fill the gap with a plausible reaction/);
+  expect(prompt).toMatch(/alternative I rejected only if the facts state it/);
+});
