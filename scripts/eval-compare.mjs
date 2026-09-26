@@ -125,11 +125,36 @@ function settingsFor(api, reasoning) {
 }
 
 const words = (text) => (text.match(/\b[\w'’-]+\b/g) || []).length;
-const median = (values) => {
+const percentile = (values, p) => {
   const sorted = values.filter((v) => typeof v === 'number').sort((a, b) => a - b);
   if (!sorted.length) return null;
-  const mid = Math.floor(sorted.length / 2);
-  return sorted.length % 2 ? sorted[mid] : Math.round((sorted[mid - 1] + sorted[mid]) / 2);
+  const rank = (sorted.length - 1) * p;
+  const low = Math.floor(rank);
+  return Math.round(sorted[low] + (sorted[Math.ceil(rank)] - sorted[low]) * (rank - low));
+};
+const median = (values) => percentile(values, 0.5);
+const ms = (value) => (value === null || value === undefined ? '-' : `${value} ms`);
+
+// Observe what each version actually sends (effort, prompt size) and when response
+// headers arrive, without touching the key: only these fields are read from the body.
+const realFetch = globalThis.fetch;
+let wire = null;
+globalThis.fetch = async (url, init) => {
+  if (String(url).includes('/responses') && typeof init?.body === 'string') {
+    try {
+      const body = JSON.parse(init.body);
+      wire = {
+        effort: body.reasoning?.effort ?? 'model default',
+        promptChars: (body.instructions?.length ?? 0) + JSON.stringify(body.input ?? '').length,
+        sentAt: performance.now(),
+      };
+    } catch {
+      wire = null;
+    }
+  }
+  const response = await realFetch(url, init);
+  if (wire) wire.headersAt = performance.now();
+  return response;
 };
 
 const report = {
@@ -140,7 +165,7 @@ const report = {
   startedAt: new Date().toISOString(),
   variants: [],
   results: [],
-  note: 'Answer-provider timing only: excludes transcription, routing and the app early-preparation head start. Human review is required; automated checks are heuristics.',
+  note: 'Timing per answer: headersMs = response headers received, firstDeltaMs = first answer text, totalMs = answer complete. Answer provider only: excludes transcription, routing and the app early-preparation head start. Human review is required; automated checks are heuristics.',
 };
 
 try {
@@ -172,6 +197,7 @@ try {
       let code = '';
       for (const [index, turn] of scenario.turns.entries()) {
         const started = performance.now();
+        wire = null;
         let firstDeltaMs = null;
         let output = '';
         let completed = false;
@@ -233,6 +259,9 @@ try {
           question: turn.question,
           review: turn.review,
           output,
+          effort: wire?.effort ?? null,
+          promptChars: wire?.promptChars ?? null,
+          headersMs: wire?.headersAt ? Math.round(wire.headersAt - started) : null,
           firstDeltaMs,
           totalMs: Math.round(performance.now() - started),
           spokenWords: words(spoken),
@@ -243,7 +272,7 @@ try {
         await writeFile(jsonFile, JSON.stringify(report, null, 2));
         const passed = Object.values(checks).every(Boolean);
         console.log(
-          `${scenario.name} #${index + 1} ${variant.id}: ${passed ? 'checks ok' : 'CHECK FAILED'}, first token ${firstDeltaMs ?? '-'} ms, total ${Math.round(performance.now() - started)} ms${error ? `, error ${error.status ?? ''} ${error.code ?? ''}` : ''}`,
+          `${scenario.name} #${index + 1} ${variant.id} [effort ${wire?.effort ?? '-'}]: ${passed ? 'checks ok' : 'CHECK FAILED'}, first token ${firstDeltaMs ?? '-'} ms, total ${Math.round(performance.now() - started)} ms${error ? `, error ${error.status ?? ''} ${error.code ?? ''}` : ''}`,
         );
         if (error) break;
         if (proposal) code = proposal.code;
@@ -262,12 +291,41 @@ try {
     '',
     `Baseline: \`${baseRef}\` @ ${report.baseCommit.slice(0, 8)} · New: working tree @ ${report.candidateCommit.slice(0, 8)}${report.candidateCommit.includes('+') ? ' (uncommitted)' : ''}`,
     '',
-    '| Version | Prompt | Reasoning | Median first token | Median total | Checks passed |',
-    '| --- | --- | --- | --- | --- | --- |',
+    '## Latency summary',
+    '',
+    '| Version | Prompt | Reasoning | First token median / p90 | Total median / p90 | Median prompt size | Checks passed |',
+    '| --- | --- | --- | --- | --- | --- | --- |',
     ...report.variants.map((v) => {
       const rows = byVariant(v.id);
       const ok = rows.filter((r) => Object.values(r.checks).every(Boolean)).length;
-      return `| ${v.label} | ${v.promptVersion} | ${v.answerReasoning} | ${median(rows.map((r) => r.firstDeltaMs)) ?? '-'} ms | ${median(rows.map((r) => r.totalMs)) ?? '-'} ms | ${ok}/${rows.length} |`;
+      const first = rows.map((r) => r.firstDeltaMs);
+      const total = rows.map((r) => r.totalMs);
+      return `| ${v.label} | ${v.promptVersion} | ${v.answerReasoning} | ${ms(median(first))} / ${ms(percentile(first, 0.9))} | ${ms(median(total))} / ${ms(percentile(total, 0.9))} | ${median(rows.map((r) => r.promptChars)) ?? '-'} chars | ${ok}/${rows.length} |`;
+    }),
+    '',
+    '### By reasoning effort actually sent',
+    '',
+    '| Version | Effort | Answers | First token median | Total median |',
+    '| --- | --- | --- | --- | --- |',
+    ...report.variants.flatMap((v) => {
+      const rows = byVariant(v.id);
+      const efforts = [...new Set(rows.map((r) => r.effort ?? 'unknown'))];
+      return efforts.map((effort) => {
+        const group = rows.filter((r) => (r.effort ?? 'unknown') === effort);
+        return `| ${v.label} | ${effort} | ${group.length} | ${ms(median(group.map((r) => r.firstDeltaMs)))} | ${ms(median(group.map((r) => r.totalMs)))} |`;
+      });
+    }),
+    '',
+    '### By conversation (median first token / total)',
+    '',
+    `| Conversation | ${report.variants.map((v) => v.label).join(' | ')} |`,
+    `| --- | ${report.variants.map(() => '---').join(' | ')} |`,
+    ...scenarios.map((scenario) => {
+      const cells = report.variants.map((v) => {
+        const rows = byVariant(v.id).filter((r) => r.scenario === scenario.name);
+        return `${ms(median(rows.map((r) => r.firstDeltaMs)))} / ${ms(median(rows.map((r) => r.totalMs)))}`;
+      });
+      return `| ${scenario.name} | ${cells.join(' | ')} |`;
     }),
     '',
     `_${report.note}_`,
@@ -286,7 +344,7 @@ try {
           .filter(([, ok]) => !ok)
           .map(([name]) => name);
         lines.push(
-          `#### ${variant.label} — first token ${row.firstDeltaMs ?? '-'} ms · total ${row.totalMs} ms · ${row.spokenWords} spoken words${failed.length ? ` · **failed: ${failed.join(', ')}**` : ''}`,
+          `#### ${variant.label} — effort ${row.effort ?? '-'} · first token ${ms(row.firstDeltaMs)} · total ${ms(row.totalMs)} · ${row.spokenWords} spoken words${failed.length ? ` · **failed: ${failed.join(', ')}**` : ''}`,
           '',
           row.output.trim() || '_(no output)_',
           '',
