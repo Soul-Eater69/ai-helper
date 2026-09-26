@@ -89,6 +89,8 @@ export const settingsSchema = z
     language: z.enum(languages).default('python'),
     /** Spoken as the candidate's own name; blank falls back to a neutral phrase. */
     candidateName: z.string().trim().max(120).default(''),
+    /** Voice and scope the answers are pitched at; replaces the old fixed junior voice. */
+    seniority: z.enum(['entry', 'mid', 'senior']).default('mid'),
     style: z
       .string()
       .max(6000)

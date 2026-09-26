@@ -2,7 +2,7 @@ import { isBehaviouralQuestion, selectStories, renderStory } from '../shared/sto
 import OpenAI from 'openai';
 import { buildInstructions } from '../shared/prompts';
 import { deduplicateCodeHistory } from '../shared/history';
-import { detectTopics, needsReasoning } from '../shared/topics';
+import { detectTopics, needsReasoning, topicsIn } from '../shared/topics';
 import type { AppEvent, AnswerRequest, Mode, Settings } from '../shared/contracts';
 export type ProviderEvent = { type: 'delta'; text: string } | { type: 'complete' };
 export type StreamProvider = (
@@ -22,23 +22,52 @@ export function friendlyError(error: unknown): string {
     return 'OpenAI rejected the request. Check your model settings and try a shorter question.';
   return 'The request could not finish. Check your connection and model access, then retry. Your code is unchanged.';
 }
-/** Resolve stored facts in main; short follow-ups reuse the nearest behavioral question. */
+const FOLLOW_UP =
+  /^(?:and |okay[, ]+|ok[, ]+|so |right[, ]+|got it[, ]+|interesting[, ]+|thanks[, ]+)*(?:how did|how do you know|how would|how long|how many|how much|how big|why did|why |what did|what would you|what happened|what was|what were|what data|what metrics?|what if|what else|what about|who |which |when did|did you|were you|was it|was there|looking back|in hindsight|if you|tell me more|go deeper|dig into|explain that|can you elaborate|elaborate|walk me through (?:that|how|what))/i;
+/**
+ * A deep-dive probe on the previous story ("what would you do differently?", "what data
+ * did you use?", "who else was involved?"). Short non-technical turns also count, so the
+ * story's facts stay attached; the prompt already says not to force a story that does
+ * not fit.
+ */
+export function isStoryFollowUp(text: string): boolean {
+  const trimmed = text.trim();
+  if (FOLLOW_UP.test(trimmed)) return true;
+  const technical = topicsIn(trimmed).some((topic) => topic === 'dsa' || topic === 'lld');
+  return trimmed.length <= 160 && !technical;
+}
+/**
+ * Resolve stored facts in main. Stories are replayed over the session's behavioral
+ * questions so one already told is outranked by a fresh fit (each interviewer in a loop
+ * probes different principles, and repeating a story is a red flag), while a follow-up
+ * gets exactly the stories its original question was answered with.
+ */
 export function composeAnswerContext(request: AnswerRequest, settings: Settings) {
-  let storyQuestion = request.question;
-  const isFollowUp = (text: string) =>
-    /^(?:and |okay[, ]+|so )?(?:how did|why did|what did|what happened|what was|what were|who |tell me more|go deeper|explain that|can you elaborate)/i.test(
-      text.trim(),
-    );
-  if (!isBehaviouralQuestion(storyQuestion) && isFollowUp(storyQuestion)) {
-    for (const turn of [...request.history].reverse()) {
+  const history = request.history;
+  let followUpOf = -1;
+  if (!isBehaviouralQuestion(request.question) && isStoryFollowUp(request.question)) {
+    for (let i = history.length - 1; i >= 0; i--) {
+      const turn = history[i];
       if (turn.role !== 'user') continue;
       if (isBehaviouralQuestion(turn.content)) {
-        storyQuestion = turn.content;
+        followUpOf = i;
         break;
       }
-      if (!isFollowUp(turn.content)) break;
+      if (!isStoryFollowUp(turn.content)) break;
     }
   }
+  const used: string[] = [];
+  let followUpStories: ReturnType<typeof selectStories> = [];
+  history.forEach((turn, index) => {
+    if (turn.role !== 'user' || !isBehaviouralQuestion(turn.content)) return;
+    const picked = selectStories(turn.content, settings.stories, { usedIds: used });
+    if (index === followUpOf) followUpStories = picked;
+    if (picked[0] && !used.includes(picked[0].story.id)) used.push(picked[0].story.id);
+  });
+  const stories =
+    followUpOf >= 0
+      ? followUpStories
+      : selectStories(request.question, settings.stories, { usedIds: used });
   return {
     question: request.question,
     pinnedContext: request.context,
@@ -47,9 +76,11 @@ export function composeAnswerContext(request: AnswerRequest, settings: Settings)
     currentCode: request.code,
     codeSource: request.codeSource ?? 'working',
     experienceFacts: settings.profile,
-    relevantExperiences: selectStories(storyQuestion, settings.stories).map((entry) =>
-      renderStory(entry.story),
-    ),
+    relevantExperiences: stories.map((entry) => renderStory(entry.story)),
+    storiesAlreadyTold: settings.stories
+      .filter((story) => used.includes(story.id))
+      .map((story) => story.title || 'Untitled'),
+    isStoryFollowUp: followUpOf >= 0,
   };
 }
 export type AnswerContext = ReturnType<typeof composeAnswerContext>;
@@ -78,7 +109,17 @@ export function formatAnswerContext(context: AnswerContext, topics: readonly Mod
   if (personal && context.experienceFacts.trim())
     sections.push(`experienceFacts:\n${context.experienceFacts}`);
   if (context.relevantExperiences.length)
-    sections.push(`relevantExperiences:\n${context.relevantExperiences.join('\n\n')}`);
+    sections.push(
+      `relevantExperiences${context.isStoryFollowUp ? ' (the story being probed; answer only the probe from these facts)' : ''}:\n${context.relevantExperiences.join('\n\n')}`,
+    );
+  if (
+    !context.isStoryFollowUp &&
+    context.storiesAlreadyTold.length &&
+    topics.includes('behavioral')
+  )
+    sections.push(
+      `Stories already told this session (prefer a different one if it fits): ${context.storiesAlreadyTold.join('; ')}`,
+    );
   return sections.join('\n\n');
 }
 /** Reasoning-capable models that accept an explicit effort, including `none`. */

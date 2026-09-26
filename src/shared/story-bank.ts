@@ -1,4 +1,4 @@
-import type { ExperienceStory } from './contracts';
+import type { ExperienceStory, LeadershipPrinciple } from './contracts';
 
 /**
  * Chooses which stored experiences to put in front of the model.
@@ -56,6 +56,12 @@ const DIRECT_FRAMES = [
   'how did you handle',
   'how did you deal',
   'how have you',
+  'give me an example of',
+  'share an example',
+  'most innovative thing you',
+  'proudest',
+  'why amazon',
+  'why do you want to work',
 ];
 
 /**
@@ -63,7 +69,55 @@ const DIRECT_FRAMES = [
  * without catching "if the lookup fails".
  */
 const PERSONAL_PAST =
-  /\byou\s+(?:ever\s+|once\s+)?(?:disagreed|failed|struggled|missed|made|pushed|argued|convinced|led|owned|shipped|broke|handled|dealt|had to)\b/;
+  /\byou\s+(?:ever\s+|once\s+)?(?:disagreed|failed|struggled|missed|made|pushed|argued|convinced|led|owned|shipped|broke|handled|dealt|had to|mentored|simplified|improved|influenced|delivered|sacrificed|took)\b/;
+
+/**
+ * How Amazon interviewers actually phrase each principle. Questions rarely name the
+ * principle ("a decision with incomplete data" is Bias for Action), so matching only on
+ * the principle's own words left most tagged stories unmatched.
+ */
+const PRINCIPLE_CUES: Record<LeadershipPrinciple, RegExp> = {
+  'Customer Obsession':
+    /\b(?:customers?|clients?|end users?|user feedback|stakeholders? needs?|customer experience)\b/,
+  Ownership:
+    /\b(?:above and beyond|beyond (?:your|the) (?:role|scope|responsibilit\w*)|outside (?:your|the) (?:role|scope|job)|took ownership|not your (?:job|responsibility)|no one else|nobody else|long[- ]term (?:over|instead)|own(?:ed)? (?:it|the problem))\b/,
+  'Invent and Simplify':
+    /\b(?:innovat\w*|simplif\w*|invent\w*|creative|new (?:idea|approach|way)|automat\w*|improved? (?:a|the) process|streamlin\w*)\b/,
+  'Are Right, A Lot':
+    /\b(?:judg(?:e)?ment|good decision|wrong decision|right call|intuition|gut feel\w*|diverse perspectives|conflicting (?:information|data|opinions))\b/,
+  'Learn and Be Curious':
+    /\b(?:learn(?:ed|t)? (?:a|something) new|new (?:technology|skill|domain|language)|curious|curiosity|unfamiliar|outside your (?:expertise|comfort zone)|self[- ]taught)\b/,
+  'Hire and Develop the Best':
+    /\b(?:mentor\w*|coach\w*|develop(?:ed)? (?:a|someone|others|your team)|hire|hiring|onboard\w*|grow (?:a|someone|your)|junior)\b/,
+  'Insist on the Highest Standards':
+    /\b(?:high(?:est)? standards?|quality|raise(?:d)? the bar|not good enough|dissatisfied with|code review|refused to (?:ship|compromise))\b/,
+  'Think Big':
+    /\b(?:think big|big picture|bold|vision|ambitious|long[- ]term vision|transformative)\b/,
+  'Bias for Action':
+    /\b(?:incomplete (?:data|information)|without (?:all|complete|enough) (?:the )?(?:data|information|facts)|calculated risk|act(?:ed)? quickly|quick decision|urgent|speed|without waiting)\b/,
+  Frugality:
+    /\b(?:limited (?:resources|budget|time|headcount)|frugal\w*|reduce(?:d)? costs?|cost savings?|with less|constrain\w* (?:budget|resources))\b/,
+  'Earn Trust':
+    /\b(?:trust|credibility|difficult feedback|critical feedback|admit(?:ted)? (?:a|your) mistake|difficult conversation|vulnerab\w*)\b/,
+  'Dive Deep':
+    /\b(?:root cause|dig(?:ging)? (?:deep|into)|deep dive|dove deep|investigat\w*|anomal\w*|metrics? (?:did not|didn't) (?:add up|match)|debug\w*|data to)\b/,
+  'Have Backbone; Disagree and Commit':
+    /\b(?:disagree\w*|push(?:ed)? back|conflict|unpopular|challenged (?:a|your|the)|disagree and commit|went against)\b/,
+  'Deliver Results':
+    /\b(?:deadline|deliver\w*|obstacles?|setbacks?|under pressure|missed (?:a|the) (?:goal|target)|achieve\w* (?:a|the) goal|despite)\b/,
+  "Strive to Be Earth's Best Employer":
+    /\b(?:morale|well[- ]?being|inclusive|inclusion|work environment|burn ?out|psychological safety)\b/,
+  'Success and Scale Bring Broad Responsibility':
+    /\b(?:ethic\w*|community|sustainab\w*|privacy|societ\w*|second[- ]order|unintended consequences?)\b/,
+};
+
+/** Principles a question is probing, inferred from Amazon's usual phrasings. */
+export function inferPrinciples(question: string): LeadershipPrinciple[] {
+  const text = question.toLowerCase();
+  return (Object.keys(PRINCIPLE_CUES) as LeadershipPrinciple[]).filter((principle) =>
+    PRINCIPLE_CUES[principle].test(text),
+  );
+}
 
 const FAILURE_CUES = [
   'fail',
@@ -190,6 +244,17 @@ export function scoreStory(
   if (principleHits.length) {
     score += 3 * principleHits.length;
     reasons.push(`matches ${principleHits.join(', ')}`);
+  }
+
+  // The principle the question is really probing, even when it is not named.
+  if (behavioural) {
+    const probed = inferPrinciples(question).filter(
+      (principle) => story.principles.includes(principle) && !principleHits.includes(principle),
+    );
+    if (probed.length) {
+      score += 4 * probed.length;
+      reasons.push(`fits ${probed.join(', ')}, which this question probes`);
+    }
   }
 
   const titleHits = overlap(story.title);

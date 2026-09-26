@@ -188,6 +188,21 @@ export default function SettingsDialog({ work, close }: { work: Workspace; close
           <p className="field-help">
             Saved on this device and sent to OpenAI for answers. Leave blank to avoid using a name.
           </p>
+          <label htmlFor="seniority">Experience level</label>
+          <select
+            id="seniority"
+            value={draft.seniority}
+            onChange={(e) =>
+              setDraft({ ...draft, seniority: e.target.value as typeof draft.seniority })
+            }
+          >
+            <option value="entry">Entry level / new grad</option>
+            <option value="mid">Mid-level (a few years of production experience)</option>
+            <option value="senior">Senior (led projects and influenced other teams)</option>
+          </select>
+          <p className="field-help">
+            Sets the voice and scope of answers. Stories still use only the facts you supply.
+          </p>
           <label htmlFor="style">Speaking style</label>
           <textarea
             id="style"
