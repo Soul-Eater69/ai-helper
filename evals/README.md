@@ -25,3 +25,19 @@ For each rubric dimension, score 0 (missed), 1 (partly), or 2 (met):
 A critical failure is an invented confirmed requirement, an unsolicited workspace proposal, or repeatedly asking a settled question. Do not average away these failures. Require human review for every turn. Repeat live runs to check variability; record results for each model/settings combination separately. No real résumé or personal story is included in these fixtures.
 
 Related questions must address one coherent decision; the numeric check cannot judge this. Review it manually. Implementation turns explicitly require a workspace proposal; planning turns forbid one.
+
+# Baseline vs new comparison
+
+`npm run eval:compare` lists the plan without API calls. To compare real answers from the previous version (default `main`) and your working tree side by side:
+
+```sh
+OPENAI_API_KEY=... npm run eval:compare -- --live
+```
+
+On Windows PowerShell: `$env:OPENAI_API_KEY="..."; npm run eval:compare -- --live`.
+
+It runs the scripted conversations in `evals/compare-conversations.json` (greetings, DSA with code and a dry run, a noisy transcript, LLD, Amazon behavioral with deep-dive follow-ups and a missing story) through each version's real answer provider, with each version's own history. The profile and stories in the fixture are fictional.
+
+Options: `--base <git ref>` compares against another commit or branch; `--only greeting,behavioral-amazon` runs selected conversations. Environment: `AI_HELPER_EVAL_MODEL` (default `gpt-5.6-sol`), `AI_HELPER_EVAL_BASE_REASONING` (default `none`, matching the old Instant preset) and `AI_HELPER_EVAL_NEW_REASONING` (default `adaptive`).
+
+Output goes to ignored `.eval-results/compare-*.md` (side-by-side answers with time to first token, total time, word counts and heuristic check results, plus a line per turn for your verdict) and a matching `.json`. The key is never printed or saved, and provider errors are recorded only as status and code. Timing covers the answer provider only; the app's early preparation usually hides part of the new version's reasoning time, so live use can feel faster than these numbers. Run it a few times, since answers vary.

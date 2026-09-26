@@ -1,0 +1,158 @@
+{
+  "candidateName": "Alex",
+  "profile": "FICTIONAL TEST PROFILE. Alex is a software engineer with about four years of experience: two years on a payments backend team (Java, PostgreSQL) and two years building data pipelines and an internal search service (Python, Kafka, Elasticsearch). MS in Computer Science.",
+  "stories": [
+    {
+      "id": "fictional-flag-rollout",
+      "title": "Shipped a checkout fix before the data was complete",
+      "principles": ["Bias for Action", "Customer Obsession"],
+      "keywords": "incident checkout errors feature flag",
+      "situation": "Checkout error rates doubled on a Friday evening after a partner API change. The full logs from the partner would not arrive until Monday.",
+      "task": "I was on call and had to decide whether to wait for the partner's data or act on partial evidence.",
+      "action": "I compared our own request logs for the failing calls, found they all used a new currency field, and put the new code path behind a feature flag so I could turn it off for affected currencies only. I told the partner and my manager what I changed and why, and set an alert on the error rate.",
+      "result": "Checkout errors dropped from about 4% back to 0.3% within an hour. The partner confirmed the root cause on Monday, and the flag let us re-enable the path safely after their fix.",
+      "learning": "I now write a short rollback plan before acting on partial data, so a fast decision is also a reversible one."
+    },
+    {
+      "id": "fictional-pipeline",
+      "title": "Rebuilt a fragile nightly ingestion pipeline",
+      "principles": ["Invent and Simplify", "Ownership", "Deliver Results"],
+      "keywords": "cron jobs kafka nightly job pipeline simplify",
+      "situation": "Our search index was fed by three chained nightly cron jobs. When one failed, the index went stale and nobody owned fixing it; it failed about twice a month.",
+      "task": "It was not formally my team's system, but our search results depended on it, so I proposed owning it.",
+      "action": "I mapped what each job did, replaced the three jobs with one Kafka consumer that updated the index incrementally, added retries and a dead-letter queue, and wrote a runbook. I did the migration in two phases so the old jobs kept running until the new path matched their output for a week.",
+      "result": "Index freshness went from up to 24 hours stale to under 5 minutes, and pipeline failures that needed manual action went from about two a month to zero in the following quarter.",
+      "learning": "Running old and new paths side by side made the migration safe and convinced other teams faster than any design document."
+    },
+    {
+      "id": "fictional-disagreement",
+      "title": "Disagreed with a senior engineer about caching",
+      "principles": ["Have Backbone; Disagree and Commit", "Dive Deep"],
+      "keywords": "cache disagreement senior engineer latency",
+      "isConflict": true,
+      "situation": "A senior engineer wanted to add a cache in front of the search service to fix slow queries.",
+      "task": "I thought the slowness came from a few expensive queries, not overall load, and a cache would hide the problem.",
+      "action": "I pulled a week of query logs and showed that 2% of query patterns caused most of the slow responses. I raised it in our design review with the data, suggested fixing those queries first, and agreed to add the cache later if latency was still high.",
+      "result": "We optimized the top five query patterns first. p95 latency dropped from 1.8 seconds to 400 milliseconds, and the team decided the cache was not needed yet.",
+      "learning": "Bringing data and a concrete alternative turned a disagreement into a quick decision."
+    }
+  ],
+  "scenarios": [
+    {
+      "name": "greeting",
+      "turns": [
+        {
+          "question": "Hi Alex, how are you doing today?",
+          "review": "Short natural greeting back; no technical content, no offer to help."
+        },
+        {
+          "question": "Great. Can you hear me okay?",
+          "review": "Brief confirmation; should not lecture or start a problem."
+        }
+      ]
+    },
+    {
+      "name": "dsa-full-flow",
+      "turns": [
+        {
+          "question": "Given a string s, find the length of the longest substring without repeating characters. For example, for abcabcbb the answer is 3.",
+          "review": "Understands the task; may ask one clarification or explain the brute force and the sliding-window improvement. Should not dump code yet."
+        },
+        {
+          "question": "Okay, what would the time complexity of your approach be?",
+          "review": "O(n) with a clear reason (each index enters and leaves the window once); space tied to the character set."
+        },
+        {
+          "question": "Sounds good, go ahead and code it in Python.",
+          "expectCode": true,
+          "review": "Explains the approach briefly, then one complete runnable Python solution with line comments."
+        },
+        {
+          "question": "Walk me through a dry run with abcabcbb.",
+          "review": "Concrete step-by-step window changes with actual indices/characters; ends with 3. No new code proposal."
+        }
+      ]
+    },
+    {
+      "name": "dsa-title-only",
+      "turns": [
+        {
+          "question": "Let's do Two Sum.",
+          "review": "Asks for or confirms the statement instead of guessing the variant, per the app rules; brief."
+        }
+      ]
+    },
+    {
+      "name": "dsa-noisy-transcript",
+      "turns": [
+        {
+          "question": "so um the problem is uh there's a list of courses and prerequisites and uh you need to find if you can finish all of them like the course schedule problem",
+          "review": "Understands course schedule despite fillers; explains cycle detection / topological order approach or asks one useful clarification."
+        },
+        {
+          "question": "yeah uh can you explain the in degree part",
+          "review": "Explains indegree concretely (count of prerequisites left, queue when it reaches zero) with a small example."
+        }
+      ]
+    },
+    {
+      "name": "lld-parking",
+      "turns": [
+        {
+          "question": "Design a parking lot system.",
+          "review": "Brief understanding and one useful scope question; no full design."
+        },
+        {
+          "question": "Single level, cars and bikes only, one entry and one exit. The system assigns the spot. Payments are out of scope.",
+          "review": "Absorbs all facts, does not re-ask them; moves toward entities/responsibilities or asks one real gap."
+        },
+        {
+          "question": "Why do you need a ticket?",
+          "review": "Direct short answer linking ticket to vehicle, spot and exit; does not restart the design."
+        }
+      ]
+    },
+    {
+      "name": "behavioral-amazon",
+      "turns": [
+        {
+          "question": "Tell me about yourself.",
+          "review": "Short spoken intro using only the fictional profile; no invented employers or metrics."
+        },
+        {
+          "question": "Tell me about a time you had to make a decision with incomplete data.",
+          "expectFacts": ["feature flag", "4%|0\\.3%"],
+          "review": "Uses the checkout feature-flag story; STAR shape without labels; mostly my actions; supplied numbers only; 250-350 words."
+        },
+        {
+          "question": "What would you do differently?",
+          "review": "Answers only the probe from the same story (rollback plan learning); a few sentences; does not retell the story."
+        },
+        {
+          "question": "Tell me about a time you went above and beyond your role.",
+          "expectFacts": ["kafka|cron|pipeline"],
+          "review": "Uses a different story (pipeline ownership), not the checkout story again."
+        },
+        {
+          "question": "What was your specific part versus the team's?",
+          "review": "Clear I vs we for the pipeline story using supplied facts only; asks via [Context needed] if a detail is missing."
+        },
+        {
+          "question": "Tell me about a time you disagreed with someone more senior.",
+          "expectFacts": ["query logs|2%", "400"],
+          "review": "Uses the caching disagreement story; shows data, respectful pushback, commit."
+        }
+      ]
+    },
+    {
+      "name": "behavioral-missing-story",
+      "turns": [
+        {
+          "question": "Tell me about a time you mentored a junior engineer.",
+          "expectContextNeeded": true,
+          "review": "No mentoring story exists: must not invent one; should emit a [Context needed] note instead of a fabricated story."
+        }
+      ]
+    }
+  ]
+}

@@ -61,5 +61,9 @@ export function needsReasoning(question: string, topics: readonly Mode[]): boole
   if (!technical) return false;
   const text = question.trim();
   if (text.length > 280) return true; // a pasted or dictated problem statement
+  // A technical statement in its own right ("Given a string s, find ..."), not a short
+  // clarification answer that only inherited the topic from earlier turns.
+  const ownTopics = topicsIn(text);
+  if (text.length >= 60 && (ownTopics.includes('dsa') || ownTopics.includes('lld'))) return true;
   return HEAVY.test(text);
 }

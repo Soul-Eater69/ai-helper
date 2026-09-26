@@ -31,6 +31,15 @@ it('inherits the ongoing topic for short follow-ups and clarification answers', 
 it('reasons only for substantial technical turns', () => {
   expect(needsReasoning('Can you implement it now?', ['dsa'])).toBe(true);
   expect(needsReasoning('Yes', ['dsa'])).toBe(false);
+  expect(
+    needsReasoning(
+      'Given a string s, find the length of the longest substring without repeating characters.',
+      ['dsa'],
+    ),
+  ).toBe(true);
+  expect(
+    needsReasoning('Single level, one entry and one exit, bikes and cars only.', ['lld']),
+  ).toBe(false);
   expect(needsReasoning('Walk me through a dry run', ['dsa'])).toBe(true);
   expect(needsReasoning('Tell me about a time you failed', ['behavioral'])).toBe(false);
   expect(needsReasoning('How are you?', [])).toBe(false);
