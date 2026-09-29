@@ -116,3 +116,18 @@ Visual dry runs support trees, graphs, arrays, grids and DP tables. Use **Back /
 Settings now includes a candidate name and a structured **Story bank**. Add up to 20 real experiences with Situation, Task, Action, Result and Learning, optional Leadership Principle tags and keywords, and failure/disagreement flags. Existing free-text background remains available. The app selects up to two relevant stories locally and resolves their text in the main process before sending the answer request. Common follow-ups can reuse the previous question's story facts. Selection uses vocabulary matching and may miss unusual phrasing; it is not semantic retrieval and does not guarantee story variety. Give specific context when needed.
 
 Your name, background and selected story facts are sent to OpenAI when generating answers and are stored in the encrypted local settings. No real experience data is included in this repository. Missing facts must be requested rather than invented. Spoken guidance favors natural first-person paragraphs; coding guidance includes short narration beats in writing order.
+
+## Bundled interview master
+
+The complete user-supplied `Pasted markdown(7).md` is stored as the `prompt` string in
+`src/shared/interview-master.json`. JSON escaping preserves the original text, including
+whitespace; the integrity test pins the SHA-256 of its decoded UTF-8 contents.
+`buildInstructions` includes the full master once as the behavioral, introduction, résumé,
+project and follow-up reference. DSA/LLD guidance remains available in the same session.
+The candidate name defaults to Ramesh Reddy Changal when no name is configured.
+
+This is a verbatim integration, not a latency optimization. The entire master is included
+in the model instructions for every request, including coding requests. Existing custom
+prompts and profile/story settings remain available; the master takes precedence for its
+specific delivery, routing and factual-status rules. Its hypothetical and illustrative
+material must retain those labels and must not be presented as verified personal history.
